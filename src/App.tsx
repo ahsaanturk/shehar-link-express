@@ -29,7 +29,9 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route element={<AppShell />}>
               <Route path="/" element={<Index />} />
+              <Route path="/store/:id" element={<StorePage />} />
               <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+              <Route path="/orders/:id" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
               <Route path="/cart" element={<Cart />} />
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
               <Route path="/admin" element={<ProtectedRoute requireAdmin><AdminHome /></ProtectedRoute>} />
