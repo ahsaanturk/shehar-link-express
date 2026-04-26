@@ -26,6 +26,7 @@ import {
   PackageOpen,
 } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
+import { useFavorites } from "@/hooks/useFavorites";
 import heroImg from "@/assets/hero-muzaffarabad.jpg";
 import promoBasket from "@/assets/promo-basket.png";
 
@@ -315,6 +316,8 @@ const FeatureChip = ({
 );
 
 const StoreCard = ({ store }: { store: Store }) => {
+  const { isStoreFav, toggleStore } = useFavorites();
+  const fav = isStoreFav(store.id);
   const categoryLabel: Record<Store["category"], string> = {
     grocery: "Grocery",
     fruits_veggies: "Fruits & Veggies",
@@ -335,11 +338,15 @@ const StoreCard = ({ store }: { store: Store }) => {
           />
         )}
         <button
-          aria-label="Favorite"
+          aria-label={fav ? "Remove from favorites" : "Add to favorites"}
+          aria-pressed={fav}
           className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-card/90 text-foreground backdrop-blur"
-          onClick={(e) => e.preventDefault()}
+          onClick={(e) => {
+            e.preventDefault();
+            toggleStore(store.id);
+          }}
         >
-          <Heart className="h-3.5 w-3.5" />
+          <Heart className={`h-3.5 w-3.5 ${fav ? "fill-primary text-primary" : ""}`} />
         </button>
       </div>
       <div className="p-2.5">
@@ -359,19 +366,20 @@ const StoreCard = ({ store }: { store: Store }) => {
 };
 
 const ProductCard = ({ product }: { product: Product }) => (
-  <div className="w-36 shrink-0 overflow-hidden rounded-2xl border border-border bg-card">
-    <Link to={`/store/${product.store_id}`} className="block">
-      <div className="h-28 w-full bg-muted">
-        {product.image_url && (
-          <img
-            src={product.image_url}
-            alt={product.name}
-            loading="lazy"
-            className="h-full w-full object-cover"
-          />
-        )}
-      </div>
-    </Link>
+  <Link
+    to={`/product/${product.id}`}
+    className="block w-36 shrink-0 overflow-hidden rounded-2xl border border-border bg-card transition active:scale-[0.98]"
+  >
+    <div className="h-28 w-full bg-muted">
+      {product.image_url && (
+        <img
+          src={product.image_url}
+          alt={product.name}
+          loading="lazy"
+          className="h-full w-full object-cover"
+        />
+      )}
+    </div>
     <div className="p-2.5">
       <p className="truncate text-xs font-bold">{product.name}</p>
       <p className="truncate text-[10px] text-muted-foreground">
@@ -379,16 +387,15 @@ const ProductCard = ({ product }: { product: Product }) => (
       </p>
       <div className="mt-1 flex items-center justify-between">
         <p className="text-xs font-bold">Rs. {Math.round(product.price)}</p>
-        <Link
-          to={`/store/${product.store_id}`}
-          aria-label="View product"
+        <span
+          aria-hidden
           className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground"
         >
           <Plus className="h-3.5 w-3.5" />
-        </Link>
+        </span>
       </div>
     </div>
-  </div>
+  </Link>
 );
 
 export default Home;

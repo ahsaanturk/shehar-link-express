@@ -13,6 +13,9 @@ import Cart from "./pages/Cart.tsx";
 import Profile from "./pages/Profile.tsx";
 import Auth from "./pages/Auth.tsx";
 import StorePage from "./pages/StorePage.tsx";
+import Collections from "./pages/Collections.tsx";
+import Favorites from "./pages/Favorites.tsx";
+import ProductDetail from "./pages/ProductDetail.tsx";
 import AdminHome from "./pages/admin/AdminHome.tsx";
 import AdminOrders from "./pages/admin/AdminOrders.tsx";
 import AdminStores from "./pages/admin/AdminStores.tsx";
@@ -34,6 +37,9 @@ const App = () => (
             <Route element={<AppShell />}>
               <Route path="/" element={<Index />} />
               <Route path="/store/:id" element={<StorePage />} />
+              <Route path="/product/:id" element={<ProductDetail />} />
+              <Route path="/categories" element={<Collections />} />
+              <Route path="/favorites" element={<Favorites />} />
               <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
               <Route path="/orders/:id" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
               <Route path="/cart" element={<Cart />} />
