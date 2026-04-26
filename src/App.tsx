@@ -15,6 +15,8 @@ import Auth from "./pages/Auth.tsx";
 import StorePage from "./pages/StorePage.tsx";
 import AdminHome from "./pages/admin/AdminHome.tsx";
 import AdminOrders from "./pages/admin/AdminOrders.tsx";
+import AdminStores from "./pages/admin/AdminStores.tsx";
+import AdminProducts from "./pages/admin/AdminProducts.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -37,6 +39,8 @@ const App = () => (
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
               <Route path="/admin" element={<ProtectedRoute requireAdmin><AdminHome /></ProtectedRoute>} />
               <Route path="/admin/orders" element={<ProtectedRoute requireAdmin><AdminOrders /></ProtectedRoute>} />
+              <Route path="/admin/stores" element={<ProtectedRoute requireAdmin><AdminStores /></ProtectedRoute>} />
+              <Route path="/admin/products" element={<ProtectedRoute requireAdmin><AdminProducts /></ProtectedRoute>} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Route>
