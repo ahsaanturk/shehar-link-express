@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 const items = [
   { to: "/", label: "Home", icon: Home, end: true },
-  { to: "/categories", label: "Categories", icon: LayoutGrid },
+  { to: "/categories", label: "Collections", icon: LayoutGrid },
   { to: "/orders", label: "Orders", icon: ClipboardList },
   { to: "/favorites", label: "Favorites", icon: Heart },
   { to: "/profile", label: "Account", icon: User },
