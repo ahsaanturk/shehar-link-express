@@ -1,12 +1,13 @@
 import { NavLink } from "react-router-dom";
-import { Home, ClipboardList, ShoppingCart, User } from "lucide-react";
+import { Home, LayoutGrid, ClipboardList, Heart, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
   { to: "/", label: "Home", icon: Home, end: true },
+  { to: "/categories", label: "Categories", icon: LayoutGrid },
   { to: "/orders", label: "Orders", icon: ClipboardList },
-  { to: "/cart", label: "Cart", icon: ShoppingCart },
-  { to: "/profile", label: "Profile", icon: User },
+  { to: "/favorites", label: "Favorites", icon: Heart },
+  { to: "/profile", label: "Account", icon: User },
 ];
 
 export const BottomNav = () => {
