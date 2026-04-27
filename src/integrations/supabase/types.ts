@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      broadcast_notifications: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string | null
+          id: string
+          image_url: string | null
+          link: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          image_url?: string | null
+          link?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          image_url?: string | null
+          link?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       order_history: {
         Row: {
           changed_by: string | null
