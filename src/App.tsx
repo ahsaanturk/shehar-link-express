@@ -16,6 +16,7 @@ import StorePage from "./pages/StorePage.tsx";
 import Collections from "./pages/Collections.tsx";
 import Favorites from "./pages/Favorites.tsx";
 import ProductDetail from "./pages/ProductDetail.tsx";
+import Notifications from "./pages/Notifications.tsx";
 import AdminHome from "./pages/admin/AdminHome.tsx";
 import AdminOrders from "./pages/admin/AdminOrders.tsx";
 import AdminStores from "./pages/admin/AdminStores.tsx";
@@ -40,6 +41,7 @@ const App = () => (
               <Route path="/store/:id" element={<StorePage />} />
               <Route path="/product/:id" element={<ProductDetail />} />
               <Route path="/categories" element={<Collections />} />
+              <Route path="/notifications" element={<Notifications />} />
               <Route path="/favorites" element={<Favorites />} />
               <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
               <Route path="/orders/:id" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
