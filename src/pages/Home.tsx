@@ -1,5 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import {
@@ -61,12 +63,23 @@ const categories = [
 ];
 
 const Home = () => {
+  const navigate = useNavigate();
   const [stores, setStores] = useState<Store[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [query, setQuery] = useState("");
   const [activeCat, setActiveCat] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const itemCount = useCart((s) => s.itemCount());
+
+  const onSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (query.trim()) navigate(`/categories?q=${encodeURIComponent(query.trim())}`);
+  };
+
+  const copyPromo = () => {
+    navigator.clipboard?.writeText("WELCOME20").catch(() => {});
+    toast.success("Promo code WELCOME20 copied!");
+  };
 
   useEffect(() => {
     Promise.all([
@@ -193,7 +206,7 @@ const Home = () => {
       <section className="pt-5">
         <div className="mb-3 flex items-center justify-between px-4">
           <h2 className="text-sm font-bold">Shop by Categories</h2>
-          <button className="text-xs font-semibold text-primary">View all ›</button>
+          <Link to="/categories" className="text-xs font-semibold text-primary">View all ›</Link>
         </div>
         <div className="no-scrollbar grid grid-flow-col grid-rows-2 auto-cols-[80px] gap-3 overflow-x-auto px-4 pb-1">
           {categories.map(({ id, label, icon: Icon }) => {
@@ -226,7 +239,7 @@ const Home = () => {
       <section className="pt-6">
         <div className="mb-3 flex items-center justify-between px-4">
           <h2 className="text-sm font-bold">Popular Stores</h2>
-          <button className="text-xs font-semibold text-primary">View all ›</button>
+          <Link to="/categories" className="text-xs font-semibold text-primary">View all ›</Link>
         </div>
         {loading ? (
           <div className="flex gap-3 overflow-x-auto px-4">
@@ -247,15 +260,17 @@ const Home = () => {
 
       {/* Promo banner */}
       <section className="px-4 pt-6">
-        <div
-          className="relative flex items-center overflow-hidden rounded-2xl p-4"
+        <button
+          type="button"
+          onClick={copyPromo}
+          className="relative flex w-full items-center overflow-hidden rounded-2xl p-4 text-left transition active:scale-[0.99]"
           style={{ background: "linear-gradient(135deg, hsl(271 81% 56%), hsl(280 70% 65%))" }}
         >
           <div className="relative z-10 text-primary-foreground">
             <p className="text-xl font-extrabold leading-none">Flat 20% OFF</p>
             <p className="mt-1 text-xs font-medium opacity-95">On your first order</p>
             <span className="mt-2 inline-block rounded-full bg-white/25 px-2.5 py-1 text-[10px] font-bold backdrop-blur">
-              Use Code: WELCOME20
+              Tap to copy: WELCOME20
             </span>
           </div>
           <img
@@ -266,14 +281,14 @@ const Home = () => {
             loading="lazy"
             className="absolute -right-4 top-1/2 h-32 w-auto -translate-y-1/2 object-contain"
           />
-        </div>
+        </button>
       </section>
 
       {/* Popular Near You */}
       <section className="pt-6">
         <div className="mb-3 flex items-center justify-between px-4">
           <h2 className="text-sm font-bold">Popular Near You</h2>
-          <button className="text-xs font-semibold text-primary">View all ›</button>
+          <Link to="/categories" className="text-xs font-semibold text-primary">View all ›</Link>
         </div>
         {loading ? (
           <div className="flex gap-3 overflow-x-auto px-4">

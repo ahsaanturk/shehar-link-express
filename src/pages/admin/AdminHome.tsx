@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Package, Store, ShoppingBag, Receipt } from "lucide-react";
+import { ArrowLeft, Package, Store, ShoppingBag, Receipt, Users } from "lucide-react";
 
 const AdminHome = () => {
   return (
@@ -15,6 +15,7 @@ const AdminHome = () => {
 
       <div className="grid grid-cols-2 gap-3">
         <AdminTile to="/admin/orders" icon={<Package />} label="Orders" />
+        <AdminTile to="/admin/users" icon={<Users />} label="Users" />
         <AdminTile to="/admin/stores" icon={<Store />} label="Stores" />
         <AdminTile to="/admin/products" icon={<ShoppingBag />} label="Products" />
         <AdminTile to="/admin/settlements" icon={<Receipt />} label="Settlements" />
