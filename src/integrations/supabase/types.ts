@@ -114,6 +114,39 @@ export type Database = {
           },
         ]
       }
+      password_reset_otps: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          new_password_hash: string | null
+          otp: string
+          phone: string
+          used: boolean
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          new_password_hash?: string | null
+          otp: string
+          phone: string
+          used?: boolean
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          new_password_hash?: string | null
+          otp?: string
+          phone?: string
+          used?: boolean
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           created_at: string
@@ -162,26 +195,38 @@ export type Database = {
         Row: {
           address: string | null
           created_at: string
+          credit_score: number
           id: string
+          is_verified: boolean
           name: string | null
           phone: string | null
+          phone_verified_at: string | null
           updated_at: string
+          whatsapp: string | null
         }
         Insert: {
           address?: string | null
           created_at?: string
+          credit_score?: number
           id: string
+          is_verified?: boolean
           name?: string | null
           phone?: string | null
+          phone_verified_at?: string | null
           updated_at?: string
+          whatsapp?: string | null
         }
         Update: {
           address?: string | null
           created_at?: string
+          credit_score?: number
           id?: string
+          is_verified?: boolean
           name?: string | null
           phone?: string | null
+          phone_verified_at?: string | null
           updated_at?: string
+          whatsapp?: string | null
         }
         Relationships: []
       }
