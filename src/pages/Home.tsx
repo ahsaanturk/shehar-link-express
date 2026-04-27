@@ -1,5 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import {
@@ -61,12 +63,23 @@ const categories = [
 ];
 
 const Home = () => {
+  const navigate = useNavigate();
   const [stores, setStores] = useState<Store[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [query, setQuery] = useState("");
   const [activeCat, setActiveCat] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const itemCount = useCart((s) => s.itemCount());
+
+  const onSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (query.trim()) navigate(`/categories?q=${encodeURIComponent(query.trim())}`);
+  };
+
+  const copyPromo = () => {
+    navigator.clipboard?.writeText("WELCOME20").catch(() => {});
+    toast.success("Promo code WELCOME20 copied!");
+  };
 
   useEffect(() => {
     Promise.all([
