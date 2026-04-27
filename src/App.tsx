@@ -23,6 +23,7 @@ import AdminStores from "./pages/admin/AdminStores.tsx";
 import AdminProducts from "./pages/admin/AdminProducts.tsx";
 import AdminSettlements from "./pages/admin/AdminSettlements.tsx";
 import AdminUsers from "./pages/admin/AdminUsers.tsx";
+import AdminNotifications from "./pages/admin/AdminNotifications.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -53,6 +54,7 @@ const App = () => (
               <Route path="/admin/products" element={<ProtectedRoute requireAdmin><AdminProducts /></ProtectedRoute>} />
               <Route path="/admin/settlements" element={<ProtectedRoute requireAdmin><AdminSettlements /></ProtectedRoute>} />
               <Route path="/admin/users" element={<ProtectedRoute requireAdmin><AdminUsers /></ProtectedRoute>} />
+              <Route path="/admin/notifications" element={<ProtectedRoute requireAdmin><AdminNotifications /></ProtectedRoute>} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Route>
