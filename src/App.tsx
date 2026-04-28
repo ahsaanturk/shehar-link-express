@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppShell } from "@/components/layout/AppShell";
 import { AuthProvider } from "@/hooks/useAuth";
+import { AreaProvider } from "@/hooks/useArea";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index.tsx";
 import Orders from "./pages/Orders.tsx";
@@ -14,6 +15,7 @@ import Profile from "./pages/Profile.tsx";
 import Auth from "./pages/Auth.tsx";
 import StorePage from "./pages/StorePage.tsx";
 import Collections from "./pages/Collections.tsx";
+import CategoryDetail from "./pages/CategoryDetail.tsx";
 import Favorites from "./pages/Favorites.tsx";
 import ProductDetail from "./pages/ProductDetail.tsx";
 import Notifications from "./pages/Notifications.tsx";
@@ -25,6 +27,8 @@ import AdminSettlements from "./pages/admin/AdminSettlements.tsx";
 import AdminUsers from "./pages/admin/AdminUsers.tsx";
 import AdminNotifications from "./pages/admin/AdminNotifications.tsx";
 import AdminRoles from "./pages/admin/AdminRoles.tsx";
+import AdminAreas from "./pages/admin/AdminAreas.tsx";
+import AdminCategories from "./pages/admin/AdminCategories.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -36,31 +40,35 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
-            <Route path="/auth" element={<Auth />} />
-            <Route element={<AppShell />}>
-              <Route path="/" element={<Index />} />
-              <Route path="/store/:id" element={<StorePage />} />
-              <Route path="/product/:id" element={<ProductDetail />} />
-              <Route path="/categories" element={<Collections />} />
-              <Route path="/notifications" element={<Notifications />} />
-              <Route path="/favorites" element={<Favorites />} />
-              <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
-              <Route path="/orders/:id" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
-              <Route path="/cart" element={<Cart />} />
-              <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-              <Route path="/admin" element={<ProtectedRoute requireAdmin><AdminHome /></ProtectedRoute>} />
-              <Route path="/admin/orders" element={<ProtectedRoute requireAdmin><AdminOrders /></ProtectedRoute>} />
-              <Route path="/admin/stores" element={<ProtectedRoute requireAdmin><AdminStores /></ProtectedRoute>} />
-              <Route path="/admin/products" element={<ProtectedRoute requireAdmin><AdminProducts /></ProtectedRoute>} />
-              <Route path="/admin/settlements" element={<ProtectedRoute requireAdmin><AdminSettlements /></ProtectedRoute>} />
-              <Route path="/admin/users" element={<ProtectedRoute requireAdmin><AdminUsers /></ProtectedRoute>} />
-              <Route path="/admin/notifications" element={<ProtectedRoute requireAdmin><AdminNotifications /></ProtectedRoute>} />
-              <Route path="/admin/roles" element={<ProtectedRoute requireAdmin><AdminRoles /></ProtectedRoute>} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Route>
-          </Routes>
+          <AreaProvider>
+            <Routes>
+              <Route path="/auth" element={<Auth />} />
+              <Route element={<AppShell />}>
+                <Route path="/" element={<Index />} />
+                <Route path="/store/:id" element={<StorePage />} />
+                <Route path="/product/:id" element={<ProductDetail />} />
+                <Route path="/categories" element={<Collections />} />
+                <Route path="/category/:slug" element={<CategoryDetail />} />
+                <Route path="/notifications" element={<Notifications />} />
+                <Route path="/favorites" element={<Favorites />} />
+                <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+                <Route path="/orders/:id" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
+                <Route path="/cart" element={<Cart />} />
+                <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+                <Route path="/admin" element={<ProtectedRoute requireAdmin><AdminHome /></ProtectedRoute>} />
+                <Route path="/admin/orders" element={<ProtectedRoute requireAdmin><AdminOrders /></ProtectedRoute>} />
+                <Route path="/admin/stores" element={<ProtectedRoute requireAdmin><AdminStores /></ProtectedRoute>} />
+                <Route path="/admin/products" element={<ProtectedRoute requireAdmin><AdminProducts /></ProtectedRoute>} />
+                <Route path="/admin/settlements" element={<ProtectedRoute requireAdmin><AdminSettlements /></ProtectedRoute>} />
+                <Route path="/admin/users" element={<ProtectedRoute requireAdmin><AdminUsers /></ProtectedRoute>} />
+                <Route path="/admin/notifications" element={<ProtectedRoute requireAdmin><AdminNotifications /></ProtectedRoute>} />
+                <Route path="/admin/roles" element={<ProtectedRoute requireAdmin><AdminRoles /></ProtectedRoute>} />
+                <Route path="/admin/areas" element={<ProtectedRoute requireAdmin><AdminAreas /></ProtectedRoute>} />
+                <Route path="/admin/categories" element={<ProtectedRoute requireAdmin><AdminCategories /></ProtectedRoute>} />
+                <Route path="*" element={<NotFound />} />
+              </Route>
+            </Routes>
+          </AreaProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
