@@ -48,7 +48,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       else setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    // Periodically verify the auth user still exists; sign out if deleted by admin
+    const interval = setInterval(async () => {
+      const { data: { session: s } } = await supabase.auth.getSession();
+      if (!s) return;
+      const { error } = await supabase.auth.getUser();
+      if (error) {
+        await supabase.auth.signOut();
+      }
+    }, 30000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearInterval(interval);
+    };
   }, []);
 
   const signOut = async () => {

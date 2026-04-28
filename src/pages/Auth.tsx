@@ -70,6 +70,19 @@ const Auth = () => {
     if (!password) return toast.error("Password required");
 
     setSubmitting(true);
+    // Check phone availability against verified accounts
+    const { data: check, error: checkErr } = await supabase.functions.invoke("check-phone-available", {
+      body: { phone },
+    });
+    if (checkErr) {
+      setSubmitting(false);
+      return toast.error("Could not validate phone. Try again.");
+    }
+    if (check && (check as any).available === false) {
+      setSubmitting(false);
+      return toast.error((check as any).reason || "This phone number is already registered.");
+    }
+
     const { error } = await supabase.auth.signUp({
       email: phoneToEmail(phone),
       password,
@@ -79,8 +92,11 @@ const Auth = () => {
       },
     });
     setSubmitting(false);
-    if (error) toast.error(error.message);
-    else toast.success("Account created!");
+    if (error) {
+      if (error.message.toLowerCase().includes("already")) {
+        toast.error("This phone number is already registered.");
+      } else toast.error(error.message);
+    } else toast.success("Account created!");
   };
 
   const handleForgotRequest = async (e: React.FormEvent) => {

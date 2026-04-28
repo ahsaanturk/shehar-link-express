@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Award, Phone, MapPin, KeyRound, Trash2 } from "lucide-react";
+import { ArrowLeft, Award, Phone, MapPin, KeyRound, Trash2, ShieldCheck, ShieldOff } from "lucide-react";
 import { toast } from "sonner";
 
 interface Profile {
@@ -82,6 +82,23 @@ const AdminUsers = () => {
     if (error) toast.error(error.message); else load();
   };
 
+  const setVerification = async (userId: string, action: "verify" | "unverify") => {
+    const { data, error } = await supabase.functions.invoke("admin-verify-user", {
+      body: { action, userId },
+    });
+    if (error || (data as any)?.error) {
+      return toast.error((data as any)?.error || error?.message || "Failed");
+    }
+    const dup = (data as any)?.deletedDuplicates ?? 0;
+    toast.success(
+      action === "verify"
+        ? `User verified${dup ? ` · ${dup} duplicate account${dup > 1 ? "s" : ""} removed` : ""}`
+        : "User unverified",
+    );
+    await load();
+    setSelected((s) => (s ? { ...s, is_verified: action === "verify" } : s));
+  };
+
   if (selected) {
     return (
       <div className="mx-auto max-w-2xl space-y-4 p-4">
@@ -107,6 +124,20 @@ const AdminUsers = () => {
             <Stat label="Cancelled" value={orderStats.cancelled} />
           </Card>
         )}
+        <div className="grid grid-cols-2 gap-2">
+          {!selected.is_verified ? (
+            <Button onClick={() => setVerification(selected.id, "verify")} className="col-span-2">
+              <ShieldCheck className="mr-2 h-4 w-4" /> Verify user
+            </Button>
+          ) : (
+            <Button variant="outline" onClick={() => setVerification(selected.id, "unverify")} className="col-span-2">
+              <ShieldOff className="mr-2 h-4 w-4" /> Unverify user
+            </Button>
+          )}
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          Verifying removes any other unverified accounts using this same phone number, including their orders and history.
+        </p>
       </div>
     );
   }
