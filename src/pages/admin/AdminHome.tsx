@@ -1,9 +1,11 @@
 import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Package, Store, ShoppingBag, Receipt, Users, Bell } from "lucide-react";
+import { ArrowLeft, Package, Store, ShoppingBag, Receipt, Users, Bell, Crown } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 const AdminHome = () => {
+  const { isSuperAdmin } = useAuth();
   return (
     <div className="mx-auto max-w-2xl space-y-4 p-4">
       <div className="flex items-center gap-2">
@@ -20,6 +22,7 @@ const AdminHome = () => {
         <AdminTile to="/admin/products" icon={<ShoppingBag />} label="Products" />
         <AdminTile to="/admin/settlements" icon={<Receipt />} label="Settlements" />
         <AdminTile to="/admin/notifications" icon={<Bell />} label="Notifications" />
+        {isSuperAdmin && <AdminTile to="/admin/roles" icon={<Crown />} label="Roles" />}
       </div>
 
       <Card className="p-4 text-sm text-muted-foreground">

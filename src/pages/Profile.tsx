@@ -8,12 +8,20 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { LogOut, Shield, User as UserIcon, Award } from "lucide-react";
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter,
+} from "@/components/ui/sheet";
+import {
+  ChevronRight, LogOut, Shield, User as UserIcon, Phone, Star,
+  MapPin, LifeBuoy, MessageCircle, Crown,
+} from "lucide-react";
 import { toast } from "sonner";
+
+const SUPPORT_WHATSAPP = "923468776390"; // +92 346 877 6390
 
 const Profile = () => {
   const navigate = useNavigate();
-  const { user, isAdmin, loading, signOut } = useAuth();
+  const { user, isAdmin, isSuperAdmin, loading, signOut } = useAuth();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
@@ -21,13 +29,15 @@ const Profile = () => {
   const [address, setAddress] = useState("");
   const [creditScore, setCreditScore] = useState(0);
   const [isVerified, setIsVerified] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [addrOpen, setAddrOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) navigate("/auth");
   }, [user, loading, navigate]);
 
-  useEffect(() => {
+  const load = () => {
     if (!user) return;
     supabase
       .from("profiles")
@@ -44,103 +54,236 @@ const Profile = () => {
           setWaSame((data.whatsapp ?? "") === (data.phone ?? ""));
         }
       });
-  }, [user]);
+  };
 
-  const save = async () => {
+  useEffect(load, [user]);
+
+  const saveProfile = async () => {
     if (!user) return;
     if (phone && !/^03\d{9}$/.test(phone)) return toast.error("Phone must be 03xxxxxxxxx");
     setSaving(true);
     const wa = waSame ? phone : whatsapp;
-    const { error } = await supabase.from("profiles").update({ name, phone, whatsapp: wa, address }).eq("id", user.id);
+    const { error } = await supabase.from("profiles")
+      .update({ name, phone, whatsapp: wa }).eq("id", user.id);
     setSaving(false);
-    if (error) toast.error(error.message); else toast.success("Profile saved");
+    if (error) return toast.error(error.message);
+    toast.success("Profile updated");
+    setEditOpen(false);
+  };
+
+  const saveAddress = async () => {
+    if (!user) return;
+    setSaving(true);
+    const { error } = await supabase.from("profiles").update({ address }).eq("id", user.id);
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("Address saved");
+    setAddrOpen(false);
+  };
+
+  const formatPhone = (p: string) => {
+    if (!p || p.length !== 11) return p || "—";
+    return `+92 ${p.slice(1, 4)} ${p.slice(4, 7)} ${p.slice(7)}`;
+  };
+
+  const openWhatsApp = () => {
+    window.open(
+      `https://wa.me/${SUPPORT_WHATSAPP}?text=${encodeURIComponent("Hello, I need support with Sheharlink.")}`,
+      "_blank",
+    );
   };
 
   if (!user) return null;
 
-  const scorePct = Math.max(0, Math.min(100, (creditScore / 1000) * 100));
-  const scoreColor =
-    creditScore < 0 ? "bg-destructive" :
-    creditScore >= 500 ? "bg-green-500" :
-    creditScore >= 150 ? "bg-primary" : "bg-yellow-500";
-
   return (
-    <div className="space-y-4 p-4">
-      <div className="flex items-center gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-          <UserIcon className="h-6 w-6" />
+    <div className="space-y-3 p-4 pb-8">
+      {/* Header */}
+      <div className="flex items-center gap-3 pb-2">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+          <UserIcon className="h-7 w-7" />
         </div>
-        <div>
-          <h1 className="text-lg font-semibold">{name || "Your profile"}</h1>
-          <p className="text-xs text-muted-foreground">{phone || user.email}</p>
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate text-lg font-bold">{name || "Your profile"}</h1>
+          <p className="text-xs text-muted-foreground">{isVerified ? "Verified account" : "New account"}</p>
         </div>
       </div>
 
-      {/* Credit Score Card */}
-      <Card className="p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Award className="h-4 w-4 text-primary" />
-            <p className="text-sm font-bold">Credit Score</p>
+      {/* Name + Phone row → edit */}
+      <Sheet open={editOpen} onOpenChange={setEditOpen}>
+        <SheetTrigger asChild>
+          <button className="w-full text-left">
+            <Card className="p-4">
+              <Row
+                icon={<UserIcon className="h-4 w-4 text-primary" />}
+                label="Name"
+                value={name || "Add your name"}
+              />
+              <div className="my-3 h-px bg-border" />
+              <Row
+                icon={<Phone className="h-4 w-4 text-primary" />}
+                label="Phone"
+                value={formatPhone(phone)}
+              />
+              <p className="mt-2 text-[11px] text-muted-foreground">Tap to edit</p>
+            </Card>
+          </button>
+        </SheetTrigger>
+        <SheetContent side="bottom" className="rounded-t-2xl">
+          <SheetHeader><SheetTitle>Edit profile</SheetTitle></SheetHeader>
+          <div className="space-y-3 py-4">
+            <div className="space-y-2">
+              <Label>Name</Label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Phone</Label>
+              <Input
+                inputMode="numeric" placeholder="03xxxxxxxxx" value={phone}
+                onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 11))}
+              />
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Checkbox id="wasame" checked={waSame} onCheckedChange={(v) => setWaSame(!!v)} />
+                <Label htmlFor="wasame" className="cursor-pointer text-xs">WhatsApp same as phone</Label>
+              </div>
+              {!waSame && (
+                <Input value={whatsapp} placeholder="03xxxxxxxxx"
+                  onChange={(e) => setWhatsapp(e.target.value.replace(/\D/g, "").slice(0, 11))} />
+              )}
+            </div>
           </div>
-          <p className="text-xl font-extrabold">{creditScore}<span className="text-xs font-normal text-muted-foreground"> / 1000</span></p>
+          <SheetFooter>
+            <Button onClick={saveProfile} disabled={saving} className="w-full">
+              {saving ? "Saving..." : "Save"}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+
+      {/* Credit Score */}
+      <Card className="flex items-center gap-3 p-4">
+        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-yellow-500/15 text-yellow-600">
+          <Star className="h-4 w-4 fill-current" />
         </div>
-        <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
-          <div className={`h-full ${scoreColor} transition-all`} style={{ width: `${scorePct}%` }} />
+        <div className="flex-1">
+          <p className="text-xs text-muted-foreground">Credit Score</p>
+          <p className="text-base font-bold">{creditScore} <span className="text-xs font-normal text-muted-foreground">/ 1000</span></p>
         </div>
-        <p className="mt-2 text-[11px] text-muted-foreground">
-          {!isVerified
-            ? "Place your first order to start earning credits. Your account verifies on first successful delivery."
-            : "Keep ordering to earn more credits. +20 per delivered order."}
-        </p>
       </Card>
 
+      {/* Address */}
+      <Sheet open={addrOpen} onOpenChange={setAddrOpen}>
+        <SheetTrigger asChild>
+          <button className="w-full text-left">
+            <Card className="flex items-start gap-3 p-4">
+              <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <MapPin className="h-4 w-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-muted-foreground">Default Address</p>
+                <p className="line-clamp-2 text-sm font-medium">{address || "Add your delivery address"}</p>
+              </div>
+              <ChevronRight className="mt-2 h-4 w-4 text-muted-foreground" />
+            </Card>
+          </button>
+        </SheetTrigger>
+        <SheetContent side="bottom" className="rounded-t-2xl">
+          <SheetHeader><SheetTitle>Manage address</SheetTitle></SheetHeader>
+          <div className="space-y-2 py-4">
+            <Label>Default delivery address</Label>
+            <Textarea rows={4} value={address} onChange={(e) => setAddress(e.target.value)} />
+          </div>
+          <SheetFooter>
+            <Button onClick={saveAddress} disabled={saving} className="w-full">
+              {saving ? "Saving..." : "Save"}
+            </Button>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
+
+      {/* Admin / Super admin entries */}
       {isAdmin && (
         <Link to="/admin">
           <Card className="flex items-center gap-3 border-primary/30 bg-primary/5 p-4">
-            <Shield className="h-5 w-5 text-primary" />
-            <div className="flex-1">
-              <p className="text-sm font-medium">Admin Portal</p>
-              <p className="text-xs text-muted-foreground">Manage stores, products, orders & users</p>
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/15 text-primary">
+              <Shield className="h-4 w-4" />
             </div>
+            <div className="flex-1">
+              <p className="text-sm font-bold">Admin Portal</p>
+              <p className="text-xs text-muted-foreground">Manage stores, orders & users</p>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </Card>
+        </Link>
+      )}
+      {isSuperAdmin && (
+        <Link to="/admin/roles">
+          <Card className="flex items-center gap-3 border-yellow-500/40 bg-yellow-500/5 p-4">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-yellow-500/15 text-yellow-600">
+              <Crown className="h-4 w-4" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-bold">Super Admin · Manage Roles</p>
+              <p className="text-xs text-muted-foreground">Assign or remove admin access</p>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
           </Card>
         </Link>
       )}
 
-      <Card className="space-y-4 p-4">
-        <div className="space-y-2">
-          <Label htmlFor="name">Name</Label>
-          <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="phone">Phone</Label>
-          <Input id="phone" inputMode="numeric" value={phone}
-            onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 11))} placeholder="03xxxxxxxxx" />
-        </div>
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Checkbox id="wasame" checked={waSame} onCheckedChange={(v) => setWaSame(!!v)} />
-            <Label htmlFor="wasame" className="cursor-pointer text-xs">WhatsApp same as phone</Label>
+      {/* Help & Support */}
+      <Card className="overflow-hidden p-0">
+        <button
+          onClick={openWhatsApp}
+          className="flex w-full items-center gap-3 p-4 text-left transition active:bg-muted"
+        >
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <LifeBuoy className="h-4 w-4" />
           </div>
-          {!waSame && (
-            <Input value={whatsapp} placeholder="03xxxxxxxxx"
-              onChange={(e) => setWhatsapp(e.target.value.replace(/\D/g, "").slice(0, 11))} />
-          )}
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="address">Default delivery address</Label>
-          <Textarea id="address" rows={3} value={address} onChange={(e) => setAddress(e.target.value)} />
-        </div>
-        <Button onClick={save} disabled={saving} className="w-full">
-          {saving ? "Saving..." : "Save"}
-        </Button>
+          <div className="flex-1">
+            <p className="text-sm font-bold">Help & Support</p>
+            <p className="text-xs text-muted-foreground">We're here to help</p>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </button>
+        <div className="h-px bg-border" />
+        <button
+          onClick={openWhatsApp}
+          className="flex w-full items-center gap-3 p-4 text-left transition active:bg-muted"
+        >
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-green-500/15 text-green-600">
+            <MessageCircle className="h-4 w-4" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-bold">WhatsApp Support</p>
+            <p className="text-xs text-muted-foreground">+92 346 877 6390</p>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </button>
       </Card>
 
-      <Button variant="outline" onClick={() => { signOut(); navigate("/"); }} className="w-full">
-        <LogOut className="mr-2 h-4 w-4" /> Sign out
+      {/* Logout */}
+      <Button
+        variant="outline"
+        onClick={() => { signOut(); navigate("/"); }}
+        className="w-full"
+      >
+        <LogOut className="mr-2 h-4 w-4" /> Logout
       </Button>
     </div>
   );
 };
+
+const Row = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) => (
+  <div className="flex items-center gap-3">
+    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">{icon}</div>
+    <div className="flex-1 min-w-0">
+      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="truncate text-sm font-semibold">{value}</p>
+    </div>
+    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+  </div>
+);
 
 export default Profile;
