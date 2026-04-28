@@ -70,7 +70,8 @@ const AdminCategories = () => {
 
   const toggle = async (c: Category, field: "is_visible" | "show_on_home") => {
     const next = !c[field];
-    const { error } = await supabase.from("categories").update({ [field]: next }).eq("id", c.id);
+    const payload = field === "is_visible" ? { is_visible: next } : { show_on_home: next };
+    const { error } = await supabase.from("categories").update(payload).eq("id", c.id);
     if (error) return toast.error(error.message);
     setCats((p) => p.map((x) => x.id === c.id ? { ...x, [field]: next } : x));
   };
