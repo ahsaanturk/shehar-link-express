@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Package, Store, ShoppingBag, Receipt, Users, Bell, Crown } from "lucide-react";
+import { ArrowLeft, Package, Store, ShoppingBag, Receipt, Users, Bell, Crown, MapPin, LayoutGrid } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 const AdminHome = () => {
@@ -9,9 +9,7 @@ const AdminHome = () => {
   return (
     <div className="mx-auto max-w-2xl space-y-4 p-4">
       <div className="flex items-center gap-2">
-        <Link to="/">
-          <Button variant="ghost" size="icon"><ArrowLeft className="h-5 w-5" /></Button>
-        </Link>
+        <Link to="/"><Button variant="ghost" size="icon"><ArrowLeft className="h-5 w-5" /></Button></Link>
         <h1 className="text-xl font-bold">Admin Portal</h1>
       </div>
 
@@ -20,14 +18,12 @@ const AdminHome = () => {
         <AdminTile to="/admin/users" icon={<Users />} label="Users" />
         <AdminTile to="/admin/stores" icon={<Store />} label="Stores" />
         <AdminTile to="/admin/products" icon={<ShoppingBag />} label="Products" />
+        <AdminTile to="/admin/categories" icon={<LayoutGrid />} label="Categories" />
+        <AdminTile to="/admin/areas" icon={<MapPin />} label="Areas" />
         <AdminTile to="/admin/settlements" icon={<Receipt />} label="Settlements" />
         <AdminTile to="/admin/notifications" icon={<Bell />} label="Notifications" />
         {isSuperAdmin && <AdminTile to="/admin/roles" icon={<Crown />} label="Roles" />}
       </div>
-
-      <Card className="p-4 text-sm text-muted-foreground">
-        Coming in next steps: live order feed, status management, store/product CRUD, and daily settlements.
-      </Card>
     </div>
   );
 };
