@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      areas: {
+        Row: {
+          created_at: string
+          id: string
+          is_visible: boolean
+          name: string
+          slug: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_visible?: boolean
+          name: string
+          slug: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_visible?: boolean
+          name?: string
+          slug?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       broadcast_notifications: {
         Row: {
           body: string
@@ -43,6 +73,42 @@ export type Database = {
           image_url?: string | null
           link?: string | null
           title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      categories: {
+        Row: {
+          created_at: string
+          icon: string | null
+          id: string
+          is_visible: boolean
+          name: string
+          show_on_home: boolean
+          slug: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          icon?: string | null
+          id?: string
+          is_visible?: boolean
+          name: string
+          show_on_home?: boolean
+          slug: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          icon?: string | null
+          id?: string
+          is_visible?: boolean
+          name?: string
+          show_on_home?: boolean
+          slug?: string
+          sort_order?: number
           updated_at?: string
         }
         Relationships: []
@@ -187,8 +253,10 @@ export type Database = {
           id: string
           image_url: string | null
           is_available: boolean
+          is_popular: boolean
           name: string
           price: number
+          sort_order: number
           store_id: string
           updated_at: string
         }
@@ -198,8 +266,10 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_available?: boolean
+          is_popular?: boolean
           name: string
           price: number
+          sort_order?: number
           store_id: string
           updated_at?: string
         }
@@ -209,8 +279,10 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_available?: boolean
+          is_popular?: boolean
           name?: string
           price?: number
+          sort_order?: number
           store_id?: string
           updated_at?: string
         }
@@ -234,6 +306,7 @@ export type Database = {
           name: string | null
           phone: string | null
           phone_verified_at: string | null
+          selected_area_id: string | null
           updated_at: string
           whatsapp: string | null
         }
@@ -246,6 +319,7 @@ export type Database = {
           name?: string | null
           phone?: string | null
           phone_verified_at?: string | null
+          selected_area_id?: string | null
           updated_at?: string
           whatsapp?: string | null
         }
@@ -258,46 +332,105 @@ export type Database = {
           name?: string | null
           phone?: string | null
           phone_verified_at?: string | null
+          selected_area_id?: string | null
           updated_at?: string
           whatsapp?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_selected_area_id_fkey"
+            columns: ["selected_area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      store_areas: {
+        Row: {
+          area_id: string
+          created_at: string
+          store_id: string
+        }
+        Insert: {
+          area_id: string
+          created_at?: string
+          store_id: string
+        }
+        Update: {
+          area_id?: string
+          created_at?: string
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_areas_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "store_areas_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       stores: {
         Row: {
           category: Database["public"]["Enums"]["store_category"]
+          category_id: string | null
           created_at: string
           description: string | null
           id: string
           image_url: string | null
           is_active: boolean
+          is_popular: boolean
           name: string
           owner_id: string | null
+          sort_order: number
           updated_at: string
         }
         Insert: {
           category: Database["public"]["Enums"]["store_category"]
+          category_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
           image_url?: string | null
           is_active?: boolean
+          is_popular?: boolean
           name: string
           owner_id?: string | null
+          sort_order?: number
           updated_at?: string
         }
         Update: {
           category?: Database["public"]["Enums"]["store_category"]
+          category_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
           image_url?: string | null
           is_active?: boolean
+          is_popular?: boolean
           name?: string
           owner_id?: string | null
+          sort_order?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "stores_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
