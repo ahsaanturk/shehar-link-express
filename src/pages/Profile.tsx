@@ -63,10 +63,14 @@ const Profile = () => {
     if (phone && !/^03\d{9}$/.test(phone)) return toast.error("Phone must be 03xxxxxxxxx");
     setSaving(true);
     const wa = waSame ? phone : whatsapp;
-    const { error } = await supabase.from("profiles")
-      .update({ name, phone, whatsapp: wa }).eq("id", user.id);
+    // If verified, never include phone in update (db trigger blocks it anyway)
+    const update: any = isVerified ? { name, whatsapp: wa } : { name, phone, whatsapp: wa };
+    const { error } = await supabase.from("profiles").update(update).eq("id", user.id);
     setSaving(false);
-    if (error) return toast.error(error.message);
+    if (error) {
+      if (error.message?.includes("phone_locked")) return toast.error("Verified phone cannot be changed");
+      return toast.error(error.message);
+    }
     toast.success("Profile updated");
     setEditOpen(false);
   };
@@ -136,11 +140,13 @@ const Profile = () => {
               <Input value={name} onChange={(e) => setName(e.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label>Phone</Label>
+              <Label>Phone {isVerified && <span className="ml-1 text-[10px] font-bold text-primary">VERIFIED · LOCKED</span>}</Label>
               <Input
                 inputMode="numeric" placeholder="03xxxxxxxxx" value={phone}
+                disabled={isVerified}
                 onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 11))}
               />
+              {isVerified && <p className="text-[10px] text-muted-foreground">Your phone is your verified ID. To change it, contact support.</p>}
             </div>
             <div className="space-y-2">
               <div className="flex items-center gap-2">
