@@ -110,8 +110,15 @@ const AdminStores = () => {
     const cat = categories.find((c) => c.id === form.category_id);
     const enumValue = (cat ? slugToEnum(cat.name) : "grocery") as any;
 
+    // Generate slug from name and verify availability
+    const slug = form.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    if (!slug) { setSaving(false); return toast.error("Invalid name"); }
+    const { data: avail } = await supabase.rpc("is_slug_available", { _slug: slug, _exclude_store_id: form.id ?? null } as any);
+    if (avail === false) { setSaving(false); return toast.error(`Slug "${slug}" is taken or reserved. Pick a different store name.`); }
+
     const payload: any = {
       name: form.name.trim(),
+      slug,
       description: form.description.trim() || null,
       category: enumValue,
       category_id: form.category_id,
