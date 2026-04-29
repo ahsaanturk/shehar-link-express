@@ -1,5 +1,6 @@
 import { Outlet, useLocation } from "react-router-dom";
 import { BottomNav } from "./BottomNav";
+import { FloatingCart } from "@/components/FloatingCart";
 
 export const AppShell = () => {
   const { pathname } = useLocation();
@@ -11,6 +12,7 @@ export const AppShell = () => {
         <Outlet />
       </main>
       {!hideNav && <BottomNav />}
+      <FloatingCart />
     </div>
   );
 };

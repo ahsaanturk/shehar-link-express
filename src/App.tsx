@@ -29,6 +29,7 @@ import AdminNotifications from "./pages/admin/AdminNotifications.tsx";
 import AdminRoles from "./pages/admin/AdminRoles.tsx";
 import AdminAreas from "./pages/admin/AdminAreas.tsx";
 import AdminCategories from "./pages/admin/AdminCategories.tsx";
+import AdminDeliveryTiers from "./pages/admin/AdminDeliveryTiers.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -65,6 +66,10 @@ const App = () => (
                 <Route path="/admin/roles" element={<ProtectedRoute requireAdmin><AdminRoles /></ProtectedRoute>} />
                 <Route path="/admin/areas" element={<ProtectedRoute requireAdmin><AdminAreas /></ProtectedRoute>} />
                 <Route path="/admin/categories" element={<ProtectedRoute requireAdmin><AdminCategories /></ProtectedRoute>} />
+                <Route path="/admin/delivery-tiers" element={<ProtectedRoute requireAdmin><AdminDeliveryTiers /></ProtectedRoute>} />
+                {/* SEO permalinks: must be last so reserved app routes win */}
+                <Route path="/:storeSlug" element={<StorePage />} />
+                <Route path="/:storeSlug/:productSlug" element={<ProductDetail />} />
                 <Route path="*" element={<NotFound />} />
               </Route>
             </Routes>

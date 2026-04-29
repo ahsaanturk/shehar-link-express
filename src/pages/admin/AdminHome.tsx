@@ -1,8 +1,9 @@
 import { Link } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Package, Store, ShoppingBag, Receipt, Users, Bell, Crown, MapPin, LayoutGrid } from "lucide-react";
+import { ArrowLeft, Package, Store, ShoppingBag, Receipt, Users, Bell, Crown, MapPin, LayoutGrid, Truck } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { OtpUrgentBanner } from "@/components/admin/OtpUrgentBanner";
 
 const AdminHome = () => {
   const { isSuperAdmin } = useAuth();
@@ -13,6 +14,8 @@ const AdminHome = () => {
         <h1 className="text-xl font-bold">Admin Portal</h1>
       </div>
 
+      <OtpUrgentBanner />
+
       <div className="grid grid-cols-2 gap-3">
         <AdminTile to="/admin/orders" icon={<Package />} label="Orders" />
         <AdminTile to="/admin/users" icon={<Users />} label="Users" />
@@ -20,6 +23,7 @@ const AdminHome = () => {
         <AdminTile to="/admin/products" icon={<ShoppingBag />} label="Products" />
         <AdminTile to="/admin/categories" icon={<LayoutGrid />} label="Categories" />
         <AdminTile to="/admin/areas" icon={<MapPin />} label="Areas" />
+        <AdminTile to="/admin/delivery-tiers" icon={<Truck />} label="Delivery Tiers" />
         <AdminTile to="/admin/settlements" icon={<Receipt />} label="Settlements" />
         <AdminTile to="/admin/notifications" icon={<Bell />} label="Notifications" />
         {isSuperAdmin && <AdminTile to="/admin/roles" icon={<Crown />} label="Roles" />}

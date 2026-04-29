@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,22 +16,26 @@ import heroImg from "@/assets/hero-muzaffarabad.jpg";
 import promoBasket from "@/assets/promo-basket.png";
 
 interface Store {
-  id: string; name: string; image_url: string | null; description: string | null;
-  category_id: string | null; is_popular: boolean;
+  id: string; slug: string; name: string; image_url: string | null; description: string | null;
+  category_id: string | null; is_popular: boolean; is_visible: boolean;
 }
 interface Product {
-  id: string; name: string; price: number; image_url: string | null; store_id: string;
-  stores?: { name: string } | null;
+  id: string; slug: string; name: string; price: number; image_url: string | null; store_id: string;
+  is_visible: boolean;
+  stores?: { name: string; slug: string } | null;
 }
 interface Category {
   id: string; name: string; slug: string; icon: string | null; show_on_home: boolean;
 }
 
 const PAGE = 10;
+const STORE_SELECT = "id,slug,name,image_url,description,category_id,is_popular,is_visible";
+const PRODUCT_SELECT = "id,slug,name,price,image_url,store_id,is_visible,stores(name,slug)";
 
 const Home = () => {
   const navigate = useNavigate();
   const { selectedArea } = useArea();
+  const cart = useCart();
   const [categories, setCategories] = useState<Category[]>([]);
   const [popularStores, setPopularStores] = useState<Store[]>([]);
   const [nearStores, setNearStores] = useState<Store[]>([]);
@@ -55,7 +59,15 @@ const Home = () => {
     toast.success("Promo code WELCOME20 copied!");
   };
 
-  // Get area-restricted store ids
+  const addToCart = (p: Product) => {
+    if (!p.stores) return;
+    cart.add({
+      product_id: p.id, store_id: p.store_id, store_name: p.stores.name, store_slug: p.stores.slug,
+      name: p.name, price: Number(p.price), image_url: p.image_url,
+    });
+    toast.success(`Added ${p.name}`);
+  };
+
   const [areaStoreIds, setAreaStoreIds] = useState<string[] | null>(null);
   useEffect(() => {
     if (!selectedArea) { setAreaStoreIds([]); return; }
@@ -63,7 +75,6 @@ const Home = () => {
       .then(({ data }) => setAreaStoreIds((data ?? []).map((r: any) => r.store_id)));
   }, [selectedArea]);
 
-  // Load categories + popular stores + popular products + near stores
   useEffect(() => {
     setLoading(true);
     setNearProducts([]); setPage(0); setHasMore(true);
@@ -72,20 +83,19 @@ const Home = () => {
       const [catsRes, popStoresRes, popProdRes] = await Promise.all([
         supabase.from("categories").select("id,name,slug,icon,show_on_home")
           .eq("is_visible", true).eq("show_on_home", true).order("sort_order"),
-        supabase.from("stores").select("id,name,image_url,description,category_id,is_popular")
-          .eq("is_active", true).eq("is_popular", true).order("sort_order").limit(10),
-        supabase.from("products").select("id,name,price,image_url,store_id,stores(name)")
-          .eq("is_available", true).eq("is_popular", true).order("sort_order").limit(12),
+        supabase.from("stores").select(STORE_SELECT)
+          .eq("is_active", true).eq("is_visible", true).eq("is_popular", true).order("sort_order").limit(10),
+        supabase.from("products").select(PRODUCT_SELECT)
+          .eq("is_available", true).eq("is_visible", true).eq("is_popular", true).order("sort_order").limit(12),
       ]);
       setCategories((catsRes.data ?? []) as Category[]);
       setPopularStores((popStoresRes.data ?? []) as Store[]);
       setPopularProducts((popProdRes.data ?? []) as Product[]);
 
-      // near stores
       if (areaStoreIds && areaStoreIds.length > 0) {
         const { data: ns } = await supabase.from("stores")
-          .select("id,name,image_url,description,category_id,is_popular")
-          .eq("is_active", true).in("id", areaStoreIds).order("sort_order").limit(10);
+          .select(STORE_SELECT)
+          .eq("is_active", true).eq("is_visible", true).in("id", areaStoreIds).order("sort_order").limit(10);
         setNearStores((ns ?? []) as Store[]);
       } else {
         setNearStores([]);
@@ -95,7 +105,6 @@ const Home = () => {
     load();
   }, [areaStoreIds]);
 
-  // Infinite scroll: products near you
   const loadMoreNear = useCallback(async () => {
     if (loadingMore || !hasMore) return;
     if (!areaStoreIds) return;
@@ -104,8 +113,8 @@ const Home = () => {
     const to = from + PAGE - 1;
     let query = supabase
       .from("products")
-      .select("id,name,price,image_url,store_id,stores(name)")
-      .eq("is_available", true)
+      .select(PRODUCT_SELECT)
+      .eq("is_available", true).eq("is_visible", true)
       .order("created_at", { ascending: false })
       .range(from, to);
     if (areaStoreIds.length > 0) query = query.in("store_id", areaStoreIds);
@@ -253,11 +262,11 @@ const Home = () => {
         <p className="px-4 text-xs text-muted-foreground">No popular products yet.</p>
       ) : (
         <div className="no-scrollbar flex gap-3 overflow-x-auto px-4 pb-1">
-          {popularProducts.map((p) => <ProductCardH key={p.id} product={p} />)}
+          {popularProducts.map((p) => <ProductCardH key={p.id} product={p} onAdd={() => addToCart(p)} />)}
         </div>
       )}
 
-      {/* Products Near You — vertical infinite scroll */}
+      {/* Products Near You */}
       <section className="pt-6">
         <div className="mb-3 flex items-center justify-between px-4">
           <h2 className="text-sm font-bold">Products Near You</h2>
@@ -266,7 +275,7 @@ const Home = () => {
           <p className="px-4 text-xs text-muted-foreground">No products in {selectedArea?.name ?? "your area"} yet.</p>
         ) : (
           <div className="grid grid-cols-2 gap-3 px-4">
-            {nearProducts.map((p) => <ProductCardV key={p.id} product={p} />)}
+            {nearProducts.map((p) => <ProductCardV key={p.id} product={p} onAdd={() => addToCart(p)} />)}
           </div>
         )}
         <div ref={sentinelRef} className="h-10" />
@@ -320,7 +329,7 @@ const StoreCard = ({ store }: { store: Store }) => {
   const { isStoreFav, toggleStore } = useFavorites();
   const fav = isStoreFav(store.id);
   return (
-    <Link to={`/store/${store.id}`} className="w-44 shrink-0 overflow-hidden rounded-2xl border border-border bg-card transition active:scale-[0.98]">
+    <Link to={`/${store.slug}`} className="w-44 shrink-0 overflow-hidden rounded-2xl border border-border bg-card transition active:scale-[0.98]">
       <div className="relative h-24 w-full bg-muted">
         {store.image_url && <img src={store.image_url} alt={store.name} loading="lazy" className="h-full w-full object-cover" />}
         <button aria-label={fav ? "Remove favorite" : "Add favorite"} aria-pressed={fav}
@@ -341,36 +350,44 @@ const StoreCard = ({ store }: { store: Store }) => {
   );
 };
 
-const ProductCardH = ({ product }: { product: Product }) => (
-  <Link to={`/product/${product.id}`} className="block w-36 shrink-0 overflow-hidden rounded-2xl border border-border bg-card transition active:scale-[0.98]">
-    <div className="h-28 w-full bg-muted">
-      {product.image_url && <img src={product.image_url} alt={product.name} loading="lazy" className="h-full w-full object-cover" />}
-    </div>
+const ProductCardH = ({ product, onAdd }: { product: Product; onAdd: () => void }) => (
+  <div className="block w-36 shrink-0 overflow-hidden rounded-2xl border border-border bg-card transition active:scale-[0.98]">
+    <Link to={product.stores ? `/${product.stores.slug}/${product.slug}` : "#"}>
+      <div className="h-28 w-full bg-muted">
+        {product.image_url && <img src={product.image_url} alt={product.name} loading="lazy" className="h-full w-full object-cover" />}
+      </div>
+    </Link>
     <div className="p-2.5">
-      <p className="truncate text-xs font-bold">{product.name}</p>
-      <p className="truncate text-[10px] text-muted-foreground">{product.stores?.name ?? "Store"}</p>
+      <Link to={product.stores ? `/${product.stores.slug}/${product.slug}` : "#"}>
+        <p className="truncate text-xs font-bold">{product.name}</p>
+        <p className="truncate text-[10px] text-muted-foreground">{product.stores?.name ?? "Store"}</p>
+      </Link>
       <div className="mt-1 flex items-center justify-between">
         <p className="text-xs font-bold">Rs. {Math.round(product.price)}</p>
-        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground"><Plus className="h-3.5 w-3.5" /></span>
+        <button onClick={onAdd} aria-label={`Add ${product.name}`} className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground transition active:scale-90"><Plus className="h-3.5 w-3.5" /></button>
       </div>
     </div>
-  </Link>
+  </div>
 );
 
-const ProductCardV = ({ product }: { product: Product }) => (
-  <Link to={`/product/${product.id}`} className="block overflow-hidden rounded-2xl border border-border bg-card transition active:scale-[0.98]">
-    <div className="aspect-square w-full bg-muted">
-      {product.image_url && <img src={product.image_url} alt={product.name} loading="lazy" className="h-full w-full object-cover" />}
-    </div>
+const ProductCardV = ({ product, onAdd }: { product: Product; onAdd: () => void }) => (
+  <div className="block overflow-hidden rounded-2xl border border-border bg-card transition active:scale-[0.98]">
+    <Link to={product.stores ? `/${product.stores.slug}/${product.slug}` : "#"}>
+      <div className="aspect-square w-full bg-muted">
+        {product.image_url && <img src={product.image_url} alt={product.name} loading="lazy" className="h-full w-full object-cover" />}
+      </div>
+    </Link>
     <div className="p-2.5">
-      <p className="truncate text-xs font-bold">{product.name}</p>
-      <p className="truncate text-[10px] text-muted-foreground">{product.stores?.name ?? "Store"}</p>
+      <Link to={product.stores ? `/${product.stores.slug}/${product.slug}` : "#"}>
+        <p className="truncate text-xs font-bold">{product.name}</p>
+        <p className="truncate text-[10px] text-muted-foreground">{product.stores?.name ?? "Store"}</p>
+      </Link>
       <div className="mt-1 flex items-center justify-between">
         <p className="text-xs font-bold">Rs. {Math.round(product.price)}</p>
-        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground"><Plus className="h-3.5 w-3.5" /></span>
+        <button onClick={onAdd} aria-label={`Add ${product.name}`} className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground transition active:scale-90"><Plus className="h-3.5 w-3.5" /></button>
       </div>
     </div>
-  </Link>
+  </div>
 );
 
 export default Home;

@@ -92,9 +92,12 @@ const AdminProducts = () => {
     if (!form.store_id) return toast.error("Select a store");
 
     setSaving(true);
+    const slug = form.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    if (!slug) { setSaving(false); return toast.error("Invalid name"); }
     const payload: any = {
       store_id: form.store_id,
       name: form.name.trim(),
+      slug,
       description: form.description.trim() || null,
       price,
       image_url: form.image_url,
