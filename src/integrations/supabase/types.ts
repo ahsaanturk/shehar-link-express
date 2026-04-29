@@ -84,6 +84,9 @@ export type Database = {
           id: string
           is_visible: boolean
           name: string
+          seo_description: string | null
+          seo_keywords: string | null
+          seo_title: string | null
           show_on_home: boolean
           slug: string
           sort_order: number
@@ -95,6 +98,9 @@ export type Database = {
           id?: string
           is_visible?: boolean
           name: string
+          seo_description?: string | null
+          seo_keywords?: string | null
+          seo_title?: string | null
           show_on_home?: boolean
           slug: string
           sort_order?: number
@@ -106,8 +112,47 @@ export type Database = {
           id?: string
           is_visible?: boolean
           name?: string
+          seo_description?: string | null
+          seo_keywords?: string | null
+          seo_title?: string | null
           show_on_home?: boolean
           slug?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      delivery_tiers: {
+        Row: {
+          away_count: number
+          created_at: string
+          id: string
+          is_active: boolean
+          label: string
+          near_count: number
+          price: number
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          away_count?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label: string
+          near_count?: number
+          price: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          away_count?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          near_count?: number
+          price?: number
           sort_order?: number
           updated_at?: string
         }
@@ -151,12 +196,15 @@ export type Database = {
       orders: {
         Row: {
           assigned_admin_id: string | null
+          cancel_reason: string | null
+          cancelled_by: string | null
           created_at: string
           customer_address: string
           customer_id: string
           customer_name: string
           customer_phone: string
           delivery_fee: number
+          delivery_tier_label: string | null
           id: string
           items: Json
           notes: string | null
@@ -169,12 +217,15 @@ export type Database = {
         }
         Insert: {
           assigned_admin_id?: string | null
+          cancel_reason?: string | null
+          cancelled_by?: string | null
           created_at?: string
           customer_address: string
           customer_id: string
           customer_name: string
           customer_phone: string
           delivery_fee?: number
+          delivery_tier_label?: string | null
           id?: string
           items: Json
           notes?: string | null
@@ -187,12 +238,15 @@ export type Database = {
         }
         Update: {
           assigned_admin_id?: string | null
+          cancel_reason?: string | null
+          cancelled_by?: string | null
           created_at?: string
           customer_address?: string
           customer_id?: string
           customer_name?: string
           customer_phone?: string
           delivery_fee?: number
+          delivery_tier_label?: string | null
           id?: string
           items?: Json
           notes?: string | null
@@ -254,8 +308,13 @@ export type Database = {
           image_url: string | null
           is_available: boolean
           is_popular: boolean
+          is_visible: boolean
           name: string
           price: number
+          seo_description: string | null
+          seo_keywords: string | null
+          seo_title: string | null
+          slug: string
           sort_order: number
           store_id: string
           updated_at: string
@@ -267,8 +326,13 @@ export type Database = {
           image_url?: string | null
           is_available?: boolean
           is_popular?: boolean
+          is_visible?: boolean
           name: string
           price: number
+          seo_description?: string | null
+          seo_keywords?: string | null
+          seo_title?: string | null
+          slug: string
           sort_order?: number
           store_id: string
           updated_at?: string
@@ -280,8 +344,13 @@ export type Database = {
           image_url?: string | null
           is_available?: boolean
           is_popular?: boolean
+          is_visible?: boolean
           name?: string
           price?: number
+          seo_description?: string | null
+          seo_keywords?: string | null
+          seo_title?: string | null
+          slug?: string
           sort_order?: number
           store_id?: string
           updated_at?: string
@@ -346,6 +415,18 @@ export type Database = {
           },
         ]
       }
+      reserved_slugs: {
+        Row: {
+          slug: string
+        }
+        Insert: {
+          slug: string
+        }
+        Update: {
+          slug?: string
+        }
+        Relationships: []
+      }
       store_areas: {
         Row: {
           area_id: string
@@ -379,6 +460,24 @@ export type Database = {
           },
         ]
       }
+      store_categories: {
+        Row: {
+          category_id: string
+          created_at: string
+          store_id: string
+        }
+        Insert: {
+          category_id: string
+          created_at?: string
+          store_id: string
+        }
+        Update: {
+          category_id?: string
+          created_at?: string
+          store_id?: string
+        }
+        Relationships: []
+      }
       stores: {
         Row: {
           category: Database["public"]["Enums"]["store_category"]
@@ -389,8 +488,13 @@ export type Database = {
           image_url: string | null
           is_active: boolean
           is_popular: boolean
+          is_visible: boolean
           name: string
           owner_id: string | null
+          seo_description: string | null
+          seo_keywords: string | null
+          seo_title: string | null
+          slug: string
           sort_order: number
           updated_at: string
         }
@@ -403,8 +507,13 @@ export type Database = {
           image_url?: string | null
           is_active?: boolean
           is_popular?: boolean
+          is_visible?: boolean
           name: string
           owner_id?: string | null
+          seo_description?: string | null
+          seo_keywords?: string | null
+          seo_title?: string | null
+          slug: string
           sort_order?: number
           updated_at?: string
         }
@@ -417,8 +526,13 @@ export type Database = {
           image_url?: string | null
           is_active?: boolean
           is_popular?: boolean
+          is_visible?: boolean
           name?: string
           owner_id?: string | null
+          seo_description?: string | null
+          seo_keywords?: string | null
+          seo_title?: string | null
+          slug?: string
           sort_order?: number
           updated_at?: string
         }
@@ -464,6 +578,18 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      is_slug_available: {
+        Args: { _exclude_store_id?: string; _slug: string }
+        Returns: boolean
+      }
+      request_otp: {
+        Args: { _phone: string }
+        Returns: {
+          expires_at: string
+          otp: string
+          throttled: boolean
+        }[]
       }
     }
     Enums: {
