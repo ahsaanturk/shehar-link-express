@@ -19,6 +19,7 @@ import CategoryDetail from "./pages/CategoryDetail.tsx";
 import Favorites from "./pages/Favorites.tsx";
 import ProductDetail from "./pages/ProductDetail.tsx";
 import Notifications from "./pages/Notifications.tsx";
+import SearchResults from "./pages/SearchResults.tsx";
 import AdminHome from "./pages/admin/AdminHome.tsx";
 import AdminOrders from "./pages/admin/AdminOrders.tsx";
 import AdminStores from "./pages/admin/AdminStores.tsx";
@@ -33,6 +34,9 @@ import AdminDeliveryTiers from "./pages/admin/AdminDeliveryTiers.tsx";
 import AdminAnalytics from "./pages/admin/AdminAnalytics.tsx";
 import AdminReviews from "./pages/admin/AdminReviews.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import CustomOrder from "./pages/CustomOrder.tsx";
+import AdminCoupons from "./pages/admin/AdminCoupons.tsx";
+import AdminCustomOrders from "./pages/admin/AdminCustomOrders.tsx";
 
 const queryClient = new QueryClient();
 
@@ -53,6 +57,8 @@ const App = () => (
                 <Route path="/categories" element={<Collections />} />
                 <Route path="/category/:slug" element={<CategoryDetail />} />
                 <Route path="/notifications" element={<Notifications />} />
+                <Route path="/search" element={<SearchResults />} />
+                <Route path="/custom-order" element={<CustomOrder />} />
                 <Route path="/favorites" element={<Favorites />} />
                 <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
                 <Route path="/orders/:id" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
@@ -71,6 +77,8 @@ const App = () => (
                 <Route path="/admin/analytics" element={<ProtectedRoute requireAdmin><AdminAnalytics /></ProtectedRoute>} />
                 <Route path="/admin/reviews" element={<ProtectedRoute requireAdmin><AdminReviews /></ProtectedRoute>} />
                 <Route path="/admin/roles" element={<ProtectedRoute requireAdmin><AdminRoles /></ProtectedRoute>} />
+                <Route path="/admin/coupons" element={<ProtectedRoute requireAdmin><AdminCoupons /></ProtectedRoute>} />
+                <Route path="/admin/custom-orders" element={<ProtectedRoute requireAdmin><AdminCustomOrders /></ProtectedRoute>} />
 
                 {/* Legacy Admin Redirects */}
                 <Route path="/admin/stores" element={<Navigate to="/admin/inventory" replace />} />

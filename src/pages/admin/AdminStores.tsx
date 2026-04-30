@@ -42,11 +42,15 @@ interface FormState {
   sort_order: number;
   area_ids: string[];
   category_ids: string[];
+  opening_time: string;
+  closing_time: string;
+  is_always_open: boolean;
 }
 
 const blank: FormState = {
   name: "", description: "", category_id: "", image_url: null,
   is_active: true, is_popular: false, sort_order: 0, area_ids: [], category_ids: [],
+  opening_time: "09:00", closing_time: "22:00", is_always_open: false,
 };
 
 const AdminStores = ({ embedded = false }: { embedded?: boolean }) => {
@@ -92,7 +96,7 @@ const AdminStores = ({ embedded = false }: { embedded?: boolean }) => {
     setOpen(true);
   };
 
-  const startEdit = (s: Store) => {
+  const startEdit = (s: Store & { opening_time?: string; closing_time?: string; is_always_open?: boolean }) => {
     setForm({
       id: s.id,
       name: s.name,
@@ -104,6 +108,9 @@ const AdminStores = ({ embedded = false }: { embedded?: boolean }) => {
       sort_order: s.sort_order,
       area_ids: storeAreas[s.id] ?? [],
       category_ids: storeCategories[s.id] ?? (s.category_id ? [s.category_id] : []),
+      opening_time: s.opening_time ? s.opening_time.slice(0,5) : "09:00",
+      closing_time: s.closing_time ? s.closing_time.slice(0,5) : "22:00",
+      is_always_open: s.is_always_open ?? false,
     });
     setOpen(true);
   };
@@ -143,6 +150,9 @@ const AdminStores = ({ embedded = false }: { embedded?: boolean }) => {
       is_active: form.is_active,
       is_popular: form.is_popular,
       sort_order: form.sort_order,
+      opening_time: form.is_always_open ? null : (form.opening_time || null),
+      closing_time: form.is_always_open ? null : (form.closing_time || null),
+      is_always_open: form.is_always_open,
     };
 
     let storeId = form.id;
@@ -287,6 +297,25 @@ const AdminStores = ({ embedded = false }: { embedded?: boolean }) => {
             <div>
               <Label>Sort order</Label>
               <Input type="number" value={form.sort_order} onChange={(e) => setForm({ ...form, sort_order: Number(e.target.value) })} />
+            </div>
+            <div className="rounded-xl border border-border p-3 space-y-3">
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Store Timings</p>
+              <div className="flex items-center justify-between">
+                <Label>Open 24/7 (Always Open)</Label>
+                <Switch checked={form.is_always_open} onCheckedChange={(v) => setForm({ ...form, is_always_open: v })} />
+              </div>
+              {!form.is_always_open && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Opening Time</Label>
+                    <Input type="time" value={form.opening_time} onChange={e => setForm({ ...form, opening_time: e.target.value })} />
+                  </div>
+                  <div>
+                    <Label>Closing Time</Label>
+                    <Input type="time" value={form.closing_time} onChange={e => setForm({ ...form, closing_time: e.target.value })} />
+                  </div>
+                </div>
+              )}
             </div>
             <div className="flex items-center justify-between">
               <Label>Mark as Popular</Label>

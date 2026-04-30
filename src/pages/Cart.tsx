@@ -10,8 +10,19 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { AreaPicker } from "@/components/AreaPicker";
-import { Minus, Plus, ShoppingBag, Trash2, AlertTriangle, Store as StoreIcon } from "lucide-react";
+import { Minus, Plus, ShoppingBag, Trash2, AlertTriangle, Store as StoreIcon, Tag, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
+
+interface CouponResult {
+  valid: boolean;
+  coupon_id?: string;
+  code?: string;
+  type?: string;
+  value?: number;
+  discount?: number;
+  store_id?: string | null;
+  error?: string;
+}
 
 const Cart = () => {
   const navigate = useNavigate();
@@ -24,6 +35,11 @@ const Cart = () => {
   const [address, setAddress] = useState("");
   const [notes, setNotes] = useState("");
   const [placing, setPlacing] = useState(false);
+
+  // Coupon state
+  const [couponCode, setCouponCode] = useState("");
+  const [coupon, setCoupon] = useState<CouponResult | null>(null);
+  const [applyingCoupon, setApplyingCoupon] = useState(false);
 
   const [tiers, setTiers] = useState<DeliveryTier[]>([]);
   const [storeAreaMap, setStoreAreaMap] = useState<Record<string, string[]>>({});
@@ -78,8 +94,29 @@ const Cart = () => {
 
   const tier = findTier(tiers, nearCount, awayCount);
   const subtotal = cart.subtotal();
+  const discount = coupon?.discount ?? 0;
   const deliveryFee = tier?.price ?? 0;
-  const total = subtotal + deliveryFee;
+  const total = subtotal - discount + deliveryFee;
+
+  const applyCoupon = async () => {
+    if (!couponCode.trim()) return;
+    setApplyingCoupon(true);
+    // Use the primary store id from the first cart item for store-scoped validation
+    const primaryStoreId = storeIds[0] ?? null;
+    const { data, error } = await supabase.rpc('validate_coupon', {
+      p_code: couponCode.trim().toUpperCase(),
+      p_store_id: primaryStoreId,
+      p_subtotal: subtotal,
+    });
+    setApplyingCoupon(false);
+    if (error) { toast.error(error.message); return; }
+    const result = data as CouponResult;
+    if (!result.valid) { toast.error(result.error ?? 'Invalid coupon'); return; }
+    setCoupon(result);
+    toast.success(`Coupon applied! You save Rs. ${result.discount}`);
+  };
+
+  const removeCoupon = () => { setCoupon(null); setCouponCode(""); };
 
   const policyError = cart.items.length > 0 && !tier
     ? `No delivery option for this combination (${nearCount} near + ${awayCount} away store${awayCount + nearCount === 1 ? "" : "s"}). Please contact support or change your area / remove a store.`
@@ -107,7 +144,9 @@ const Cart = () => {
         items: items as any,
         subtotal: sub,
         delivery_fee: share,
-        total_amount: sub + share,
+        total_amount: sub + share - Math.round(discount * (sub / subtotal)),
+        discount_amount: Math.round(discount * (sub / subtotal)),
+        coupon_id: coupon?.coupon_id ?? null,
         customer_name: name.trim(),
         customer_phone: phone.trim(),
         customer_address: address.trim(),
@@ -117,6 +156,10 @@ const Cart = () => {
     }
 
     const { data, error } = await supabase.from("orders").insert(orderRows).select("id,short_id");
+    // Use coupon if applied
+    if (!error && coupon?.coupon_id) {
+      await supabase.rpc('use_coupon', { p_coupon_id: coupon.coupon_id });
+    }
     setPlacing(false);
     if (error) { toast.error(error.message); return; }
     cart.clear();
@@ -208,12 +251,46 @@ const Cart = () => {
 
       <Card className="space-y-2 p-4 text-sm">
         <div className="flex justify-between"><span>Subtotal</span><span>Rs. {subtotal}</span></div>
+        {discount > 0 && (
+          <div className="flex justify-between text-green-600">
+            <span>Discount ({coupon?.code})</span>
+            <span>− Rs. {discount}</span>
+          </div>
+        )}
         <div className="flex justify-between">
           <span>Delivery fee {tier && <span className="text-xs text-muted-foreground">({tier.label})</span>}</span>
           <span>Rs. {deliveryFee}</span>
         </div>
         <div className="flex justify-between border-t border-border pt-2 text-base font-bold"><span>Total</span><span>Rs. {total}</span></div>
         <p className="pt-1 text-xs text-muted-foreground">Payment: <span className="font-semibold text-foreground">Cash on Delivery</span></p>
+
+        {/* Coupon field */}
+        <div className="pt-2">
+          {coupon ? (
+            <div className="flex items-center justify-between rounded-xl bg-green-500/10 px-3 py-2">
+              <div className="flex items-center gap-2 text-green-700">
+                <CheckCircle className="h-4 w-4" />
+                <span className="text-xs font-bold">{coupon.code} — Rs. {discount} off</span>
+              </div>
+              <button onClick={removeCoupon} className="text-xs text-destructive font-semibold">Remove</button>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Tag className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Coupon code"
+                  value={couponCode}
+                  onChange={e => setCouponCode(e.target.value.toUpperCase())}
+                  className="pl-9 rounded-full"
+                />
+              </div>
+              <Button variant="outline" onClick={applyCoupon} disabled={applyingCoupon || !couponCode.trim()} className="rounded-full">
+                {applyingCoupon ? "…" : "Apply"}
+              </Button>
+            </div>
+          )}
+        </div>
       </Card>
 
       <Card className="space-y-3 p-4">

@@ -9,6 +9,7 @@ import {
   Search, Star, ShoppingBasket, LayoutGrid, Package as PackageIcon, Heart, Plus,
 } from "lucide-react";
 import { useFavorites } from "@/hooks/useFavorites";
+import { SearchAutocomplete } from "@/components/SearchAutocomplete";
 
 type Tab = "stores" | "products" | "categories";
 type StoresFilter = "popular" | "near";
@@ -81,8 +82,7 @@ const Collections = () => {
         {(tab === "stores" || tab === "products") && (
           <>
             <div className="relative mt-3">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder={`Search ${tab}…`} value={query} onChange={(e) => setQuery(e.target.value)} className="rounded-full pl-9" />
+              <SearchAutocomplete />
             </div>
             <div className="mt-3 flex gap-2">
               <FilterChip active={(tab === "stores" ? storesFilter : productsFilter) === "popular"} onClick={() => setFilter("popular")}>Popular</FilterChip>

@@ -8,7 +8,8 @@ import { useStoreRating } from "@/hooks/useReviews";
 import { ReviewSection } from "@/components/ReviewSection";
 import { ReviewStars } from "@/components/ReviewStars";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Heart, LayoutGrid, List, Plus, Star, ShoppingCart } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { ArrowLeft, Heart, LayoutGrid, List, Plus, ShoppingCart, Search, Clock, ClipboardList } from "lucide-react";
 
 interface Store {
   id: string;
@@ -20,6 +21,9 @@ interface Store {
   seo_description: string | null;
   is_visible: boolean;
   is_active: boolean;
+  opening_time: string | null;
+  closing_time: string | null;
+  is_always_open: boolean;
 }
 
 interface Product {
@@ -33,9 +37,30 @@ interface Product {
   is_visible: boolean;
 }
 
-/**
- * Resolves either /store/:id (legacy) or /:storeSlug
- */
+/** Returns Open/Closed info based on store timing */
+function getStoreTimingInfo(store: Store): { isOpen: boolean; label: string } {
+  if (store.is_always_open) return { isOpen: true, label: "Open 24/7" };
+  if (!store.opening_time || !store.closing_time) return { isOpen: true, label: "" };
+  const now = new Date();
+  const [oh, om] = store.opening_time.split(":").map(Number);
+  const [ch, cm] = store.closing_time.split(":").map(Number);
+  const openMin = oh * 60 + om;
+  const closeMin = ch * 60 + cm;
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const isOpen = nowMin >= openMin && nowMin < closeMin;
+  const fmt = (h: number, m: number) => {
+    const ampm = h >= 12 ? "PM" : "AM";
+    const hh = h % 12 || 12;
+    return `${hh}:${String(m).padStart(2, "0")} ${ampm}`;
+  };
+  return {
+    isOpen,
+    label: isOpen
+      ? `Open · Closes at ${fmt(ch, cm)}`
+      : `Closed · Opens at ${fmt(oh, om)}`,
+  };
+}
+
 const StorePage = () => {
   const params = useParams();
   const navigate = useNavigate();
@@ -45,6 +70,7 @@ const StorePage = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"grid" | "list">("grid");
+  const [searchQ, setSearchQ] = useState("");
 
   const lookup = params.id ?? params.storeSlug;
   const isSlug = !!params.storeSlug;
@@ -53,7 +79,7 @@ const StorePage = () => {
     if (!lookup) return;
     setLoading(true);
     const q = supabase.from("stores")
-      .select("id,slug,name,image_url,description,seo_title,seo_description,is_visible,is_active");
+      .select("id,slug,name,image_url,description,seo_title,seo_description,is_visible,is_active,opening_time,closing_time,is_always_open");
     const finder = isSlug ? q.eq("slug", lookup) : q.eq("id", lookup);
     finder.maybeSingle().then(async ({ data }) => {
       if (!data || !data.is_active || !data.is_visible) {
@@ -66,10 +92,6 @@ const StorePage = () => {
       setProducts((pd ?? []) as Product[]);
       setLoading(false);
     });
-
-    let channel: any;
-    // realtime once we know id
-    return () => { if (channel) supabase.removeChannel(channel); };
   }, [lookup, isSlug]);
 
   useSEO({
@@ -93,12 +115,20 @@ const StorePage = () => {
     [cart.items, store?.id],
   );
   const storeSubtotal = cartItemsThisStore.reduce((s, i) => s + i.price * i.qty, 0);
-
   const storeRating = useStoreRating(store?.id ?? null);
+  const timing = store ? getStoreTimingInfo(store) : null;
+
+  // Client-side product search
+  const filteredProducts = useMemo(() => {
+    if (!searchQ.trim()) return products;
+    const q = searchQ.toLowerCase();
+    return products.filter(p =>
+      p.name.toLowerCase().includes(q) || (p.description ?? "").toLowerCase().includes(q)
+    );
+  }, [products, searchQ]);
 
   if (loading) return <div className="space-y-3 p-4">{[1,2,3,4].map(i => <div key={i} className="h-20 animate-pulse rounded-lg bg-muted" />)}</div>;
   if (!store) return <div className="p-8 text-center text-sm text-muted-foreground">Store not found.</div>;
-
 
   const addToCart = (p: Product) => {
     cart.add({
@@ -129,15 +159,38 @@ const StorePage = () => {
         <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <h1 className="text-xl font-extrabold">{store.name}</h1>
           {store.description && <p className="mt-1 text-xs text-muted-foreground">{store.description}</p>}
-          <div className="mt-2 flex items-center gap-3 text-xs">
+          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
             <ReviewStars rating={storeRating.avg} size="sm" showValue count={storeRating.count} />
+            {timing && timing.label && (
+              <span className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                timing.isOpen ? "bg-green-500/10 text-green-700" : "bg-red-500/10 text-red-700"
+              }`}>
+                <Clock className="h-3 w-3" />
+                {timing.label}
+              </span>
+            )}
           </div>
         </div>
       </div>
 
-      {/* View toggle */}
+      {/* Custom Order button */}
+      <div className="px-4 pt-3">
+        <Link to={`/custom-order?store=${store.slug}`}>
+          <div className="flex items-center gap-3 rounded-2xl border border-dashed border-primary/40 bg-primary/5 p-3 transition active:scale-[0.99]">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/15">
+              <ClipboardList className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-primary">Custom Order from this store</p>
+              <p className="text-[10px] text-muted-foreground">Order anything not listed · کوئی بھی چیز منگوائیں</p>
+            </div>
+          </div>
+        </Link>
+      </div>
+
+      {/* Products header + search */}
       <div className="flex items-center justify-between px-4 pt-5">
-        <h2 className="text-sm font-bold">Menu ({products.length})</h2>
+        <h2 className="text-sm font-bold">Menu ({filteredProducts.length})</h2>
         <div className="flex items-center gap-1 rounded-full border border-border bg-card p-1">
           <button aria-label="Grid view" onClick={() => setView("grid")}
             className={`flex h-7 w-7 items-center justify-center rounded-full ${view === "grid" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>
@@ -150,12 +203,25 @@ const StorePage = () => {
         </div>
       </div>
 
+      {/* In-store search */}
+      <div className="relative mt-2 px-4">
+        <Search className="absolute left-7 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          placeholder={`Search in ${store.name}…`}
+          value={searchQ}
+          onChange={e => setSearchQ(e.target.value)}
+          className="rounded-full pl-9"
+        />
+      </div>
+
       <div className="px-4 pt-3">
-        {products.length === 0 ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">No products yet.</p>
+        {filteredProducts.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            {searchQ ? `No products matching "${searchQ}".` : "No products yet."}
+          </p>
         ) : view === "grid" ? (
           <div className="grid grid-cols-2 gap-3">
-            {products.map((p) => {
+            {filteredProducts.map((p) => {
               const q = qtyInCart(p.id);
               return (
                 <div key={p.id} className="overflow-hidden rounded-2xl border border-border bg-card">
@@ -191,7 +257,7 @@ const StorePage = () => {
           </div>
         ) : (
           <ul className="divide-y divide-border">
-            {products.map((p) => {
+            {filteredProducts.map((p) => {
               const q = qtyInCart(p.id);
               return (
                 <li key={p.id} className="flex items-center gap-3 py-3">
@@ -219,11 +285,7 @@ const StorePage = () => {
 
       {/* Reviews */}
       <div className="px-4 pt-6">
-        <ReviewSection
-          storeId={store.id}
-          avgRating={storeRating.avg}
-          reviewCount={storeRating.count}
-        />
+        <ReviewSection storeId={store.id} avgRating={storeRating.avg} reviewCount={storeRating.count} />
       </div>
 
       {cartItemsThisStore.length > 0 && (

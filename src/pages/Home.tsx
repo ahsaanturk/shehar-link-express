@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import * as Icons from "lucide-react";
 import {
   Search, Bell, ShoppingCart, Star, Heart, Plus, ShoppingBasket,
-  Truck, ShieldCheck, PackageOpen,
+  Truck, ShieldCheck, PackageOpen, ClipboardList, Clock,
 } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
 import { useFavorites } from "@/hooks/useFavorites";
@@ -14,12 +14,14 @@ import { useArea } from "@/hooks/useArea";
 import { useStoreRating } from "@/hooks/useReviews";
 import { ReviewStars } from "@/components/ReviewStars";
 import { AreaPicker } from "@/components/AreaPicker";
+import { SearchAutocomplete } from "@/components/SearchAutocomplete";
 import heroImg from "@/assets/hero-muzaffarabad.jpg";
 import promoBasket from "@/assets/promo-basket.png";
 
 interface Store {
   id: string; slug: string; name: string; image_url: string | null; description: string | null;
   category_id: string | null; is_popular: boolean; is_visible: boolean;
+  opening_time?: string | null; closing_time?: string | null; is_always_open?: boolean;
 }
 interface Product {
   id: string; slug: string; name: string; price: number; image_url: string | null; store_id: string;
@@ -50,11 +52,6 @@ const Home = () => {
   const [query, setQuery] = useState("");
   const itemCount = useCart((s) => s.itemCount());
   const sentinelRef = useRef<HTMLDivElement | null>(null);
-
-  const onSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (query.trim()) navigate(`/categories?q=${encodeURIComponent(query.trim())}`);
-  };
 
   const copyPromo = () => {
     navigator.clipboard?.writeText("WELCOME20").catch(() => {});
@@ -173,10 +170,9 @@ const Home = () => {
 
         <div className="mt-2"><AreaPicker /></div>
 
-        <form onSubmit={onSearchSubmit} className="relative mt-2">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Search for stores, products…" value={query} onChange={(e) => setQuery(e.target.value)} className="rounded-full pl-9" />
-        </form>
+        <div className="relative mt-2">
+          <SearchAutocomplete />
+        </div>
       </header>
 
       <h1 className="sr-only">SheharLink — Muzaffarabad delivery</h1>
@@ -329,6 +325,24 @@ const StoreCard = ({ store }: { store: Store }) => {
   const { isStoreFav, toggleStore } = useFavorites();
   const rating = useStoreRating(store.id);
   const fav = isStoreFav(store.id);
+
+  // Compute timing badge
+  let timingLabel = "";
+  let timingOpen = true;
+  if (!store.is_always_open && store.opening_time && store.closing_time) {
+    const now = new Date();
+    const [oh, om] = store.opening_time.split(":").map(Number);
+    const [ch, cm] = store.closing_time.split(":").map(Number);
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    const openMin = oh * 60 + om;
+    const closeMin = ch * 60 + cm;
+    timingOpen = nowMin >= openMin && nowMin < closeMin;
+    const fmt = (h: number, m: number) => `${h % 12 || 12}:${String(m).padStart(2,"0")} ${h >= 12 ? "PM" : "AM"}`;
+    timingLabel = timingOpen ? `Open until ${fmt(ch, cm)}` : `Closed`;
+  } else if (store.is_always_open) {
+    timingLabel = "24/7";
+  }
+
   return (
     <Link to={`/${store.slug}`} className="w-44 shrink-0 overflow-hidden rounded-2xl border border-border bg-card transition active:scale-[0.98]">
       <div className="relative h-24 w-full bg-muted">
@@ -338,6 +352,13 @@ const StoreCard = ({ store }: { store: Store }) => {
           onClick={(e) => { e.preventDefault(); toggleStore(store.id); }}>
           <Heart className={`h-3.5 w-3.5 ${fav ? "fill-primary text-primary" : ""}`} />
         </button>
+        {timingLabel && (
+          <span className={`absolute left-2 bottom-2 flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-bold backdrop-blur ${
+            timingOpen ? "bg-green-500/80 text-white" : "bg-red-500/80 text-white"
+          }`}>
+            <Clock className="h-2.5 w-2.5" />{timingLabel}
+          </span>
+        )}
       </div>
       <div className="p-2.5">
         <p className="truncate text-sm font-bold">{store.name}</p>
