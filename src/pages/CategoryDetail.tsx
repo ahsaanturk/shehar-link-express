@@ -50,12 +50,11 @@ const CategoryDetail = () => {
       setCategory(cat as Category);
       const { data: storeData } = await supabase
         .from("stores")
-        .select("id,name,image_url,description,category_id,is_popular")
-        .eq("category_id", cat.id)
+        .select("id,name,image_url,description,is_popular,store_categories!inner(category_id)")
+        .eq("store_categories.category_id", cat.id)
         .eq("is_active", true)
-        .order("is_popular", { ascending: false })
-        .order("sort_order");
-      setStores((storeData ?? []) as Store[]);
+        .order("is_popular", { ascending: false });
+      setStores((storeData ?? []) as any[]);
       setLoading(false);
     })();
   }, [slug]);
@@ -67,9 +66,9 @@ const CategoryDetail = () => {
     const to = from + PAGE - 1;
     let q = supabase
       .from("products")
-      .select("id,name,price,image_url,store_id,stores!inner(name,category_id)")
+      .select("id,name,price,image_url,store_id,stores!inner(name, store_categories!inner(category_id))")
       .eq("is_available", true)
-      .eq("stores.category_id", category.id)
+      .eq("stores.store_categories.category_id", category.id)
       .order("created_at", { ascending: false })
       .range(from, to);
     const { data } = await q;

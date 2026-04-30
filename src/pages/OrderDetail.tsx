@@ -4,7 +4,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { StatusBadge, OrderStatus } from "@/components/StatusBadge";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Check, Clock, MapPin, Phone } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { ArrowLeft, Check, Clock, MapPin, Phone, AlertCircle, MessageSquare } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 interface Order {
@@ -21,7 +29,17 @@ interface Order {
   notes: string | null;
   created_at: string;
   store_id: string;
+  cancellation_reason: string | null;
+  cancelled_by_admin: boolean;
 }
+
+const CANCEL_OPTIONS = [
+  "Change of mind",
+  "Ordered by mistake",
+  "Long delivery time",
+  "Found better price",
+  "Other",
+];
 
 const STEPS: { key: OrderStatus; label: string }[] = [
   { key: "pending", label: "Pending" },
@@ -37,6 +55,10 @@ const OrderDetail = () => {
   const [order, setOrder] = useState<Order | null>(null);
   const [storeName, setStoreName] = useState("");
   const [loading, setLoading] = useState(true);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelText, setCancelText] = useState("");
 
   useEffect(() => {
     if (!id) return;
@@ -60,6 +82,30 @@ const OrderDetail = () => {
     return () => { supabase.removeChannel(channel); };
   }, [id]);
 
+  const handleCancel = async () => {
+    if (!id || !order) return;
+    if (!cancelReason) return toast.error("Please select a reason");
+    const finalReason = cancelReason === "Other" ? cancelText : cancelReason;
+    if (cancelReason === "Other" && !cancelText.trim()) return toast.error("Please specify your reason");
+
+    setCancelling(true);
+    const { error } = await supabase
+      .from("orders")
+      .update({
+        status: "cancelled",
+        cancellation_reason: finalReason,
+        cancelled_by_admin: false,
+      })
+      .eq("id", id);
+    setCancelling(false);
+    
+    if (error) toast.error(error.message);
+    else {
+      toast.success("Order cancelled");
+      setCancelOpen(false);
+    }
+  };
+
   if (loading) return <div className="p-4"><div className="h-40 animate-pulse rounded-lg bg-muted" /></div>;
   if (!order) return <div className="p-8 text-center text-sm text-muted-foreground">Order not found.</div>;
 
@@ -81,7 +127,18 @@ const OrderDetail = () => {
 
       {cancelled ? (
         <Card className="border-destructive/50 bg-destructive/5 p-4 text-sm">
-          This order was cancelled.
+          <div className="flex items-start gap-3">
+            <AlertCircle className="mt-0.5 h-4 w-4 text-destructive" />
+            <div>
+              <p className="font-bold text-destructive">This order was cancelled.</p>
+              {order.cancellation_reason && (
+                <p className="mt-1 text-muted-foreground">
+                  Reason: <span className="text-foreground">{order.cancellation_reason}</span>
+                  {order.cancelled_by_admin && <span className="ml-1 font-semibold text-destructive">(by Admin)</span>}
+                </p>
+              )}
+            </div>
+          </div>
         </Card>
       ) : (
         <Card className="p-4">
@@ -132,6 +189,57 @@ const OrderDetail = () => {
         <p className="flex items-start gap-2 text-muted-foreground"><MapPin className="mt-0.5 h-3 w-3 shrink-0" /> {order.customer_address}</p>
         {order.notes && <p className="border-t border-border pt-2 text-xs text-muted-foreground">Note: {order.notes}</p>}
       </Card>
+
+      {!cancelled && order.status === "pending" && (
+        <Button
+          variant="outline"
+          className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive"
+          onClick={() => setCancelOpen(true)}
+        >
+          Cancel Order
+        </Button>
+      )}
+
+      {!cancelled && order.status !== "pending" && (
+        <p className="px-2 text-center text-[10px] text-muted-foreground">
+          To cancel this order, please contact support via WhatsApp.
+        </p>
+      )}
+
+      <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel Order</DialogTitle>
+            <DialogDescription>Please tell us why you want to cancel this order.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <Select value={cancelReason} onValueChange={setCancelReason}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a reason" />
+              </SelectTrigger>
+              <SelectContent>
+                {CANCEL_OPTIONS.map((opt) => (
+                  <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {cancelReason === "Other" && (
+              <Input
+                placeholder="Type your reason here..."
+                value={cancelText}
+                onChange={(e) => setCancelText(e.target.value)}
+              />
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setCancelOpen(false)}>Back</Button>
+            <Button variant="destructive" onClick={handleCancel} disabled={cancelling}>
+              {cancelling ? "Cancelling..." : "Confirm Cancellation"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

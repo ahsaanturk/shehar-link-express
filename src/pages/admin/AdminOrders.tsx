@@ -6,9 +6,13 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription,
+  Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter,
 } from "@/components/ui/drawer";
-import { ArrowLeft, MapPin, Phone, MessageCircle, Loader2 } from "lucide-react";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { ArrowLeft, MapPin, Phone, MessageCircle, Loader2, Smartphone, AlertCircle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 
@@ -26,6 +30,8 @@ interface AdminOrder {
   notes: string | null;
   created_at: string;
   store_id: string;
+  cancellation_reason: string | null;
+  cancelled_by_admin: boolean;
 }
 
 const FILTERS: { value: OrderStatus | "all"; label: string }[] = [
@@ -69,6 +75,8 @@ const AdminOrders = () => {
   const [filter, setFilter] = useState<OrderStatus | "all">("all");
   const [selected, setSelected] = useState<AdminOrder | null>(null);
   const [updating, setUpdating] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
 
   useEffect(() => {
     const load = async () => {
@@ -114,18 +122,44 @@ const AdminOrders = () => {
     [orders, filter],
   );
 
-  const updateStatus = async (next: OrderStatus) => {
+  const updateStatus = async (next: OrderStatus, reason?: string) => {
     if (!selected) return;
+    if (next === "cancelled" && !reason) {
+      setCancelOpen(true);
+      return;
+    }
     setUpdating(true);
-    const { error } = await supabase.from("orders").update({ status: next }).eq("id", selected.id);
+    const update: any = { status: next };
+    if (next === "cancelled") {
+      update.cancellation_reason = reason;
+      update.cancelled_by_admin = true;
+    }
+    const { error } = await supabase.from("orders").update(update).eq("id", selected.id);
     setUpdating(false);
     if (error) toast.error(error.message);
-    else toast.success(`Marked ${next.replace("_", " ")}`);
+    else {
+      toast.success(`Marked ${next.replace("_", " ")}`);
+      setCancelOpen(false);
+      setCancelReason("");
+    }
   };
 
   const shareWhatsApp = (o: AdminOrder) => {
     const text = encodeURIComponent(buildWhatsAppText(o, storeNames[o.store_id]));
-    window.open(`https://wa.me/?text=${text}`, "_blank");
+    window.open(`https://wa.me/92${o.customer_phone.replace(/^0/, "")}?text=${text}`, "_blank");
+  };
+
+  const notifyUser = (o: AdminOrder, type: "preparing" | "picked_up", method: "wa" | "sms") => {
+    const msg = type === "preparing" 
+      ? `Hello ${o.customer_name}, your order ${o.short_id} from ${storeNames[o.store_id] || "SheharLink"} is now being prepared.`
+      : `Hello ${o.customer_name}, your order ${o.short_id} has been picked up by our rider and is on the way to you!`;
+    const text = encodeURIComponent(msg);
+    const phone = `92${o.customer_phone.replace(/^0/, "")}`;
+    if (method === "wa") {
+      window.open(`https://wa.me/${phone}?text=${text}`, "_blank");
+    } else {
+      window.location.href = `sms:+${phone}?body=${text}`;
+    }
   };
 
   return (
@@ -220,8 +254,31 @@ const AdminOrders = () => {
                 </div>
 
                 <Button variant="outline" className="w-full" onClick={() => shareWhatsApp(selected)}>
-                  <MessageCircle className="mr-2 h-4 w-4" /> Share to WhatsApp
+                  <MessageCircle className="mr-2 h-4 w-4" /> Share to Store WhatsApp
                 </Button>
+
+                {selected.status === "cancelled" && selected.cancellation_reason && (
+                  <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3">
+                    <p className="flex items-center gap-2 text-xs font-bold text-destructive">
+                      <AlertCircle className="h-3 w-3" /> Cancelled Reason
+                    </p>
+                    <p className="mt-1 text-xs">{selected.cancellation_reason} {selected.cancelled_by_admin && "(by Admin)"}</p>
+                  </div>
+                )}
+
+                {(selected.status === "preparing" || selected.status === "picked_up") && (
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Notify Customer</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button variant="outline" size="sm" onClick={() => notifyUser(selected, selected.status as any, "wa")}>
+                        <MessageCircle className="mr-1 h-3.5 w-3.5 text-green-600" /> WhatsApp
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => notifyUser(selected, selected.status as any, "sms")}>
+                        <Smartphone className="mr-1 h-3.5 w-3.5 text-blue-600" /> SMS
+                      </Button>
+                    </div>
+                  </div>
+                )}
 
                 {NEXT_ACTIONS[selected.status]?.map((a) => (
                   <Button
@@ -239,6 +296,28 @@ const AdminOrders = () => {
           )}
         </DrawerContent>
       </Drawer>
+
+      <Dialog open={cancelOpen} onOpenChange={setCancelOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel Order</DialogTitle>
+            <DialogDescription>Please provide a reason for cancelling this order. This will be shown to the customer.</DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <Input 
+              placeholder="Reason (e.g. Out of stock, Store closed...)" 
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setCancelOpen(false)}>Back</Button>
+            <Button variant="destructive" onClick={() => updateStatus("cancelled", cancelReason)} disabled={updating || !cancelReason.trim()}>
+              Confirm Cancellation
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

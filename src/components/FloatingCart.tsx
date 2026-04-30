@@ -1,11 +1,11 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { ShoppingCart } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
-import { useLocation } from "react-router-dom";
+import { cn } from "@/lib/utils";
 
 /**
- * Floating cart button anchored bottom-right above the bottom nav.
- * Hidden on cart, auth, admin, checkout-like pages.
+ * Floating cart button anchored to the right side of the screen.
+ * Grabs attention when items are in the cart.
  */
 export const FloatingCart = () => {
   const count = useCart((s) => s.itemCount());
@@ -16,18 +16,23 @@ export const FloatingCart = () => {
   if (pathname.startsWith("/cart") || pathname.startsWith("/auth") || pathname.startsWith("/admin")) return null;
 
   return (
-    <Link
-      to="/cart"
-      aria-label={`View cart with ${count} items`}
-      className="fixed bottom-24 right-4 z-40 flex items-center gap-2 rounded-full bg-primary px-4 py-3 text-primary-foreground shadow-2xl shadow-primary/40 transition active:scale-95"
-    >
-      <span className="relative">
-        <ShoppingCart className="h-5 w-5" />
-        <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
-          {count}
-        </span>
-      </span>
-      <span className="text-sm font-bold">View Cart · Rs. {subtotal}</span>
-    </Link>
+    <div className="fixed right-4 top-1/2 z-50 -translate-y-1/2 transition-all duration-300 animate-in fade-in slide-in-from-right-4">
+      <Link
+        to="/cart"
+        aria-label={`View cart with ${count} items`}
+        className={cn(
+          "flex h-16 w-16 flex-col items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-2xl transition hover:scale-105 active:scale-95",
+          "ring-4 ring-background"
+        )}
+      >
+        <div className="relative">
+          <ShoppingCart className="h-6 w-6" />
+          <span className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-white text-[10px] font-bold text-primary shadow-sm">
+            {count}
+          </span>
+        </div>
+        <p className="mt-1 text-[10px] font-bold">Rs. {Math.round(subtotal)}</p>
+      </Link>
+    </div>
   );
 };

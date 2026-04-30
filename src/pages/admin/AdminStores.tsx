@@ -41,14 +41,15 @@ interface FormState {
   is_popular: boolean;
   sort_order: number;
   area_ids: string[];
+  category_ids: string[];
 }
 
 const blank: FormState = {
   name: "", description: "", category_id: "", image_url: null,
-  is_active: true, is_popular: false, sort_order: 0, area_ids: [],
+  is_active: true, is_popular: false, sort_order: 0, area_ids: [], category_ids: [],
 };
 
-const AdminStores = () => {
+const AdminStores = ({ embedded = false }: { embedded?: boolean }) => {
   const [stores, setStores] = useState<Store[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [areas, setAreas] = useState<Area[]>([]);
@@ -57,24 +58,30 @@ const AdminStores = () => {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<FormState>(blank);
   const [saving, setSaving] = useState(false);
+  const [storeCategories, setStoreCategories] = useState<Record<string, string[]>>({});
 
   const load = async () => {
     setLoading(true);
-    const [s, c, a, sa] = await Promise.all([
+    const [s, c, a, sa, sc] = await Promise.all([
       supabase.from("stores").select("*").order("sort_order").order("created_at", { ascending: false }),
       supabase.from("categories").select("id,name").order("sort_order"),
       supabase.from("areas").select("id,name").order("sort_order"),
       supabase.from("store_areas").select("store_id,area_id"),
+      supabase.from("store_categories").select("store_id,category_id"),
     ]);
     if (s.error) toast.error(s.error.message);
     setStores((s.data ?? []) as Store[]);
     setCategories((c.data ?? []) as Category[]);
     setAreas((a.data ?? []) as Area[]);
-    const map: Record<string, string[]> = {};
-    (sa.data ?? []).forEach((row: any) => {
-      (map[row.store_id] = map[row.store_id] ?? []).push(row.area_id);
-    });
-    setStoreAreas(map);
+    
+    const aMap: Record<string, string[]> = {};
+    (sa.data ?? []).forEach((row: any) => { (aMap[row.store_id] = aMap[row.store_id] ?? []).push(row.area_id); });
+    setStoreAreas(aMap);
+
+    const cMap: Record<string, string[]> = {};
+    (sc.data ?? []).forEach((row: any) => { (cMap[row.store_id] = cMap[row.store_id] ?? []).push(row.category_id); });
+    setStoreCategories(cMap);
+    
     setLoading(false);
   };
 
@@ -96,6 +103,7 @@ const AdminStores = () => {
       is_popular: s.is_popular,
       sort_order: s.sort_order,
       area_ids: storeAreas[s.id] ?? [],
+      category_ids: storeCategories[s.id] ?? (s.category_id ? [s.category_id] : []),
     });
     setOpen(true);
   };
@@ -106,8 +114,17 @@ const AdminStores = () => {
     if (form.area_ids.length === 0) return toast.error("Select at least one delivery area");
     setSaving(true);
 
-    // Determine slug for the legacy enum column from chosen category
-    const cat = categories.find((c) => c.id === form.category_id);
+    setSaving(true);
+    
+    // Default to "Others" if no category selected
+    let chosenCatIds = form.category_ids;
+    if (chosenCatIds.length === 0) {
+      const others = categories.find(c => c.name.toLowerCase() === "others");
+      if (others) chosenCatIds = [others.id];
+    }
+
+    // Determine legacy enum from first category
+    const cat = categories.find((c) => chosenCatIds.includes(c.id));
     const enumValue = (cat ? slugToEnum(cat.name) : "grocery") as any;
 
     // Generate slug from name and verify availability
@@ -121,7 +138,7 @@ const AdminStores = () => {
       slug,
       description: form.description.trim() || null,
       category: enumValue,
-      category_id: form.category_id,
+      category_id: chosenCatIds[0] || null,
       image_url: form.image_url,
       is_active: form.is_active,
       is_popular: form.is_popular,
@@ -144,6 +161,14 @@ const AdminStores = () => {
       if (form.area_ids.length > 0) {
         const rows = form.area_ids.map((area_id) => ({ store_id: storeId!, area_id }));
         const { error } = await supabase.from("store_areas").insert(rows);
+        if (error) { setSaving(false); return toast.error(error.message); }
+      }
+      
+      // Replace category links
+      await supabase.from("store_categories").delete().eq("store_id", storeId);
+      if (chosenCatIds.length > 0) {
+        const rows = chosenCatIds.map((category_id) => ({ store_id: storeId!, category_id }));
+        const { error } = await supabase.from("store_categories").insert(rows);
         if (error) { setSaving(false); return toast.error(error.message); }
       }
     }
@@ -180,75 +205,104 @@ const AdminStores = () => {
     }));
   };
 
+  const toggleCategoryInForm = (id: string) => {
+    setForm((f) => ({
+      ...f,
+      category_ids: f.category_ids.includes(id) ? f.category_ids.filter((x) => x !== id) : [...f.category_ids, id],
+    }));
+  };
+
   return (
-    <div className="mx-auto max-w-3xl space-y-4 p-4">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <Link to="/admin"><Button variant="ghost" size="icon"><ArrowLeft className="h-5 w-5" /></Button></Link>
-          <h1 className="text-xl font-bold">Stores</h1>
+    <div className={embedded ? "space-y-4" : "mx-auto max-w-3xl space-y-4 p-4"}>
+      {!embedded && (
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Link to="/admin"><Button variant="ghost" size="icon"><ArrowLeft className="h-5 w-5" /></Button></Link>
+            <h1 className="text-xl font-bold">Stores</h1>
+          </div>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild><Button onClick={startCreate}><Plus className="h-4 w-4" /> New</Button></DialogTrigger>
+          </Dialog>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild><Button onClick={startCreate}><Plus className="h-4 w-4" /> New</Button></DialogTrigger>
-          <DialogContent className="max-h-[85vh] overflow-y-auto">
-            <DialogHeader><DialogTitle>{form.id ? "Edit store" : "New store"}</DialogTitle></DialogHeader>
-            <div className="space-y-3">
-              <div>
-                <Label>Image</Label>
-                <ImageUpload bucket="store-images" value={form.image_url} onChange={(url) => setForm((f) => ({ ...f, image_url: url }))} />
+      )}
+
+      {embedded && (
+        <div className="flex justify-end">
+          <Button onClick={startCreate} size="sm"><Plus className="h-4 w-4" /> New Store</Button>
+        </div>
+      )}
+
+      {!embedded && <div className="h-px bg-border" />}
+      
+      {/* Dialog remains same but needs trigger logic adjustment if embedded */}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>{form.id ? "Edit store" : "New store"}</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>Image</Label>
+              <ImageUpload bucket="store-images" value={form.image_url} onChange={(url) => setForm((f) => ({ ...f, image_url: url }))} />
+            </div>
+            <div>
+              <Label>Name</Label>
+              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            </div>
+            <div>
+              <Label>Description</Label>
+              <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+            </div>
+            <div>
+              <Label>Categories (select one or more)</Label>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                {categories.map((c) => {
+                  const active = form.category_ids.includes(c.id);
+                  return (
+                    <button key={c.id} type="button" onClick={() => toggleCategoryInForm(c.id)}
+                      className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
+                        active ? "border-primary bg-secondary text-primary" : "border-border bg-card text-foreground"
+                      }`}>
+                      {c.name}
+                    </button>
+                  );
+                })}
               </div>
-              <div>
-                <Label>Name</Label>
-                <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-              </div>
-              <div>
-                <Label>Description</Label>
-                <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-              </div>
-              <div>
-                <Label>Category</Label>
-                <Select value={form.category_id} onValueChange={(v) => setForm({ ...form, category_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
-                  <SelectContent>
-                    {categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Delivery Areas (select one or more)</Label>
-                <div className="mt-2 grid grid-cols-2 gap-2">
-                  {areas.map((a) => {
-                    const active = form.area_ids.includes(a.id);
-                    return (
-                      <button key={a.id} type="button" onClick={() => toggleAreaInForm(a.id)}
-                        className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
-                          active ? "border-primary bg-secondary text-primary" : "border-border bg-card text-foreground"
-                        }`}>
-                        {a.name}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-              <div>
-                <Label>Sort order</Label>
-                <Input type="number" value={form.sort_order} onChange={(e) => setForm({ ...form, sort_order: Number(e.target.value) })} />
-              </div>
-              <div className="flex items-center justify-between">
-                <Label>Mark as Popular</Label>
-                <Switch checked={form.is_popular} onCheckedChange={(v) => setForm({ ...form, is_popular: v })} />
-              </div>
-              <div className="flex items-center justify-between">
-                <Label>Active</Label>
-                <Switch checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: v })} />
+              <p className="mt-1 text-[10px] text-muted-foreground">If none selected, defaults to "Others".</p>
+            </div>
+            <div>
+              <Label>Delivery Areas (select one or more)</Label>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                {areas.map((a) => {
+                  const active = form.area_ids.includes(a.id);
+                  return (
+                    <button key={a.id} type="button" onClick={() => toggleAreaInForm(a.id)}
+                      className={`rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
+                        active ? "border-primary bg-secondary text-primary" : "border-border bg-card text-foreground"
+                      }`}>
+                      {a.name}
+                    </button>
+                  );
+                })}
               </div>
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button onClick={save} disabled={saving}>{saving ? "Saving..." : "Save"}</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+            <div>
+              <Label>Sort order</Label>
+              <Input type="number" value={form.sort_order} onChange={(e) => setForm({ ...form, sort_order: Number(e.target.value) })} />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label>Mark as Popular</Label>
+              <Switch checked={form.is_popular} onCheckedChange={(v) => setForm({ ...form, is_popular: v })} />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label>Active</Label>
+              <Switch checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: v })} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button onClick={save} disabled={saving}>{saving ? "Saving..." : "Save"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {loading ? <p className="text-sm text-muted-foreground">Loading...</p> : stores.length === 0 ? (
         <Card className="p-6 text-center text-sm text-muted-foreground">No stores yet.</Card>
@@ -262,7 +316,7 @@ const AdminStores = () => {
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium">{s.name}</p>
                 <p className="text-xs text-muted-foreground capitalize">
-                  {categories.find(c => c.id === s.category_id)?.name ?? s.category} · {(storeAreas[s.id]?.length ?? 0)} area(s)
+                  {storeCategories[s.id]?.map(cid => categories.find(c => c.id === cid)?.name).filter(Boolean).join(", ") || "Others"} · {(storeAreas[s.id]?.length ?? 0)} area(s)
                   {s.is_popular && <span className="ml-2 rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-bold text-primary">Popular</span>}
                 </p>
               </div>

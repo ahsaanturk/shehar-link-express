@@ -567,6 +567,64 @@ export type Database = {
         }
         Relationships: []
       }
+      reviews: {
+        Row: {
+          id: string
+          user_id: string
+          store_id: string | null
+          product_id: string | null
+          order_id: string
+          rating: number
+          comment: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          store_id?: string | null
+          product_id?: string | null
+          order_id: string
+          rating: number
+          comment?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          store_id?: string | null
+          product_id?: string | null
+          order_id?: string
+          rating?: number
+          comment?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -589,6 +647,33 @@ export type Database = {
           expires_at: string
           otp: string
           throttled: boolean
+        }[]
+      }
+      store_avg_rating: {
+        Args: { _store_id: string }
+        Returns: { avg_rating: number; review_count: number }[]
+      }
+      product_avg_rating: {
+        Args: { _product_id: string }
+        Returns: { avg_rating: number; review_count: number }[]
+      }
+      admin_daily_stats: {
+        Args: { _days?: number }
+        Returns: {
+          day: string
+          order_count: number
+          revenue: number
+          delivered_count: number
+          cancelled_count: number
+        }[]
+      }
+      admin_top_stores: {
+        Args: { _limit?: number }
+        Returns: {
+          store_id: string
+          store_name: string
+          order_count: number
+          total_revenue: number
         }[]
       }
     }

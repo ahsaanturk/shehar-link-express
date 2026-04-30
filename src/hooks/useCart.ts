@@ -78,12 +78,32 @@ export interface DeliveryTier {
 }
 
 export const findTier = (tiers: DeliveryTier[], near: number, away: number): DeliveryTier | null => {
-  // exact match
+  // User's specific requirements:
+  // 1 Near -> 100
+  // 2 Near -> 150
+  // 3 Near -> 200
+  // 1 Away -> 150
+  // 1 Away + 1 Near -> 200
+  
+  if (away === 0) {
+    if (near === 1) return { id: "fixed-1n", label: "1 Store (Near)", near_count: 1, away_count: 0, price: 100 };
+    if (near === 2) return { id: "fixed-2n", label: "2 Stores (Near)", near_count: 2, away_count: 0, price: 150 };
+    if (near >= 3) return { id: "fixed-3n", label: "3+ Stores (Near)", near_count: near, away_count: 0, price: 200 };
+  }
+  
+  if (away === 1) {
+    if (near === 0) return { id: "fixed-1a", label: "1 Store (Away)", near_count: 0, away_count: 1, price: 150 };
+    if (near === 1) return { id: "fixed-1a1n", label: "1 Away + 1 Near", near_count: 1, away_count: 1, price: 200 };
+    if (near >= 2) return { id: "fixed-1an", label: "1 Away + Multi Near", near_count: near, away_count: 1, price: 250 }; // fallback
+  }
+
+  if (away >= 2) {
+    return { id: "fixed-an", label: "Multi Store Delivery", near_count: near, away_count: away, price: 250 + (away - 1) * 50 }; // sensible fallback
+  }
+
+  // Check admin tiers if any
   const exact = tiers.find((t) => t.near_count === near && t.away_count === away);
   if (exact) return exact;
-  // fallback: highest "near" tier when near>=3
-  if (near >= 3 && away === 0) {
-    return tiers.find((t) => t.near_count >= 3 && t.away_count === 0) ?? null;
-  }
+
   return null;
 };

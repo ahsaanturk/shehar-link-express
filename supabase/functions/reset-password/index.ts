@@ -32,9 +32,45 @@ Deno.serve(async (req) => {
           status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+
+      // Check for existing valid OTP
+      const { data: existing } = await admin
+        .from("password_reset_otps")
+        .select("*")
+        .eq("phone", phone)
+        .eq("used", false)
+        .gt("expires_at", new Date().toISOString())
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (existing) {
+        const createdAt = new Date(existing.created_at).getTime();
+        const now = new Date().getTime();
+        const diffMs = now - createdAt;
+        
+        // Cooldown: 2 minutes (120,000 ms)
+        if (diffMs < 120000) {
+          const waitSec = Math.ceil((120000 - diffMs) / 1000);
+          return new Response(JSON.stringify({ error: `Please wait ${waitSec} seconds before requesting again.` }), {
+            status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Reuse OTP and reset expiry to 10 mins from now
+        const newExpiry = new Date(now + 600000).toISOString();
+        await admin.from("password_reset_otps").update({ expires_at: newExpiry }).eq("id", existing.id);
+        
+        return new Response(JSON.stringify({ ok: true, message: "OTP refreshed. Contact admin to receive it." }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Create new OTP
       const code = String(Math.floor(100000 + Math.random() * 900000));
+      const expiresAt = new Date(new Date().getTime() + 600000).toISOString(); // 10 mins
       await admin.from("password_reset_otps").insert({
-        phone, user_id: profile.id, otp: code,
+        phone, user_id: profile.id, otp: code, expires_at: expiresAt
       });
       return new Response(JSON.stringify({ ok: true, message: "OTP created. Contact admin to receive it." }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -4,6 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCart } from "@/hooks/useCart";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useSEO } from "@/hooks/useSEO";
+import { useProductRating } from "@/hooks/useReviews";
+import { ReviewSection } from "@/components/ReviewSection";
+import { ReviewStars } from "@/components/ReviewStars";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Heart, ShoppingCart, Store as StoreIcon } from "lucide-react";
 
@@ -92,6 +95,9 @@ const ProductDetail = () => {
       : null,
   });
 
+  const productRating = useProductRating(product?.id ?? null);
+  const fav = isProductFav(product?.id ?? "");
+
   if (loading) {
     return (
       <div className="space-y-3 p-4">
@@ -104,7 +110,7 @@ const ProductDetail = () => {
   if (!product) return <div className="p-8 text-center text-sm text-muted-foreground">Product not found.</div>;
 
   const inCart = cart.items.find((i) => i.product_id === product.id)?.qty ?? 0;
-  const fav = isProductFav(product.id);
+
 
   const addToCart = () => {
     cart.add({
@@ -136,6 +142,11 @@ const ProductDetail = () => {
         <header>
           <h1 className="text-2xl font-bold leading-tight">{product.name}</h1>
           <p className="mt-1 text-2xl font-extrabold text-primary">Rs. {Math.round(product.price)}</p>
+          {productRating.count > 0 && (
+            <div className="mt-1.5">
+              <ReviewStars rating={productRating.avg} size="sm" showValue count={productRating.count} />
+            </div>
+          )}
           {!product.is_available && <p className="mt-1 text-xs font-semibold text-destructive">Currently unavailable</p>}
         </header>
 
@@ -159,6 +170,12 @@ const ProductDetail = () => {
             <p className="text-sm leading-relaxed text-muted-foreground">{product.description}</p>
           </section>
         )}
+
+        <ReviewSection
+          productId={product.id}
+          avgRating={productRating.avg}
+          reviewCount={productRating.count}
+        />
       </div>
 
       {product.is_available && (

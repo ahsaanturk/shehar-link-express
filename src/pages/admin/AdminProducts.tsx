@@ -38,7 +38,7 @@ const blank = (storeId: string): FormState => ({
   is_available: true, is_popular: false, sort_order: 0,
 });
 
-const AdminProducts = () => {
+const AdminProducts = ({ embedded = false }: { embedded?: boolean }) => {
   const [stores, setStores] = useState<Store[]>([]);
   const [storeFilter, setStoreFilter] = useState<string>("all");
   const [products, setProducts] = useState<Product[]>([]);
@@ -136,14 +136,28 @@ const AdminProducts = () => {
   };
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4 p-4">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <Link to="/admin"><Button variant="ghost" size="icon"><ArrowLeft className="h-5 w-5" /></Button></Link>
-          <h1 className="text-xl font-bold">Products</h1>
+    <div className={embedded ? "space-y-4" : "mx-auto max-w-3xl space-y-4 p-4"}>
+      {!embedded && (
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Link to="/admin"><Button variant="ghost" size="icon"><ArrowLeft className="h-5 w-5" /></Button></Link>
+            <h1 className="text-xl font-bold">Products</h1>
+          </div>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild><Button onClick={startCreate}><Plus className="h-4 w-4" /> New</Button></DialogTrigger>
+          </Dialog>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild><Button onClick={startCreate}><Plus className="h-4 w-4" /> New</Button></DialogTrigger>
+      )}
+
+      {embedded && (
+        <div className="flex justify-end">
+          <Button onClick={startCreate} size="sm"><Plus className="h-4 w-4" /> New Product</Button>
+        </div>
+      )}
+
+      {!embedded && <div className="h-px bg-border" />}
+
+      <Dialog open={open} onOpenChange={setOpen}>
           <DialogContent className="max-h-[85vh] overflow-y-auto">
             <DialogHeader><DialogTitle>{form.id ? "Edit product" : "New product"}</DialogTitle></DialogHeader>
             <div className="space-y-3">
@@ -191,7 +205,7 @@ const AdminProducts = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
+
 
       <div>
         <Label className="text-xs text-muted-foreground">Filter by store</Label>

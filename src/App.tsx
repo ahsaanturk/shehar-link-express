@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -28,8 +28,10 @@ import AdminUsers from "./pages/admin/AdminUsers.tsx";
 import AdminNotifications from "./pages/admin/AdminNotifications.tsx";
 import AdminRoles from "./pages/admin/AdminRoles.tsx";
 import AdminAreas from "./pages/admin/AdminAreas.tsx";
-import AdminCategories from "./pages/admin/AdminCategories.tsx";
+import AdminInventory from "./pages/admin/AdminInventory.tsx";
 import AdminDeliveryTiers from "./pages/admin/AdminDeliveryTiers.tsx";
+import AdminAnalytics from "./pages/admin/AdminAnalytics.tsx";
+import AdminReviews from "./pages/admin/AdminReviews.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -56,18 +58,26 @@ const App = () => (
                 <Route path="/orders/:id" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
                 <Route path="/cart" element={<Cart />} />
                 <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+
+                {/* Admin Routes */}
                 <Route path="/admin" element={<ProtectedRoute requireAdmin><AdminHome /></ProtectedRoute>} />
                 <Route path="/admin/orders" element={<ProtectedRoute requireAdmin><AdminOrders /></ProtectedRoute>} />
-                <Route path="/admin/stores" element={<ProtectedRoute requireAdmin><AdminStores /></ProtectedRoute>} />
-                <Route path="/admin/products" element={<ProtectedRoute requireAdmin><AdminProducts /></ProtectedRoute>} />
+                <Route path="/admin/inventory" element={<ProtectedRoute requireAdmin><AdminInventory /></ProtectedRoute>} />
+                <Route path="/admin/areas" element={<ProtectedRoute requireAdmin><AdminAreas /></ProtectedRoute>} />
+                <Route path="/admin/delivery-tiers" element={<ProtectedRoute requireAdmin><AdminDeliveryTiers /></ProtectedRoute>} />
                 <Route path="/admin/settlements" element={<ProtectedRoute requireAdmin><AdminSettlements /></ProtectedRoute>} />
                 <Route path="/admin/users" element={<ProtectedRoute requireAdmin><AdminUsers /></ProtectedRoute>} />
                 <Route path="/admin/notifications" element={<ProtectedRoute requireAdmin><AdminNotifications /></ProtectedRoute>} />
+                <Route path="/admin/analytics" element={<ProtectedRoute requireAdmin><AdminAnalytics /></ProtectedRoute>} />
+                <Route path="/admin/reviews" element={<ProtectedRoute requireAdmin><AdminReviews /></ProtectedRoute>} />
                 <Route path="/admin/roles" element={<ProtectedRoute requireAdmin><AdminRoles /></ProtectedRoute>} />
-                <Route path="/admin/areas" element={<ProtectedRoute requireAdmin><AdminAreas /></ProtectedRoute>} />
-                <Route path="/admin/categories" element={<ProtectedRoute requireAdmin><AdminCategories /></ProtectedRoute>} />
-                <Route path="/admin/delivery-tiers" element={<ProtectedRoute requireAdmin><AdminDeliveryTiers /></ProtectedRoute>} />
-                {/* SEO permalinks: must be last so reserved app routes win */}
+
+                {/* Legacy Admin Redirects */}
+                <Route path="/admin/stores" element={<Navigate to="/admin/inventory" replace />} />
+                <Route path="/admin/products" element={<Navigate to="/admin/inventory" replace />} />
+                <Route path="/admin/categories" element={<Navigate to="/admin/inventory" replace />} />
+
+                {/* SEO permalinks: must be last so reserved app routes like /cart win */}
                 <Route path="/:storeSlug" element={<StorePage />} />
                 <Route path="/:storeSlug/:productSlug" element={<ProductDetail />} />
                 <Route path="*" element={<NotFound />} />

@@ -11,6 +11,8 @@ import {
 import { useCart } from "@/hooks/useCart";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useArea } from "@/hooks/useArea";
+import { useStoreRating } from "@/hooks/useReviews";
+import { ReviewStars } from "@/components/ReviewStars";
 import { AreaPicker } from "@/components/AreaPicker";
 import heroImg from "@/assets/hero-muzaffarabad.jpg";
 import promoBasket from "@/assets/promo-basket.png";
@@ -145,9 +147,7 @@ const Home = () => {
       <header className="sticky top-0 z-30 border-b border-border bg-card/95 px-4 pb-3 pt-3 backdrop-blur">
         <div className="flex items-center justify-between gap-3">
           <Link to="/" className="flex items-center gap-1.5">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <ShoppingBasket className="h-4 w-4" />
-            </span>
+            <img src="/logo.png" alt="SheharLink Logo" className="h-8 w-8 object-contain rounded-lg" />
             <div className="leading-none">
               <div className="text-base font-extrabold tracking-tight">
                 <span className="text-primary">Shehar</span><span className="text-foreground">Link</span>
@@ -327,6 +327,7 @@ const FeatureChip = ({ icon: Icon, title, subtitle }: { icon: typeof Truck; titl
 
 const StoreCard = ({ store }: { store: Store }) => {
   const { isStoreFav, toggleStore } = useFavorites();
+  const rating = useStoreRating(store.id);
   const fav = isStoreFav(store.id);
   return (
     <Link to={`/${store.slug}`} className="w-44 shrink-0 overflow-hidden rounded-2xl border border-border bg-card transition active:scale-[0.98]">
@@ -341,9 +342,11 @@ const StoreCard = ({ store }: { store: Store }) => {
       <div className="p-2.5">
         <p className="truncate text-sm font-bold">{store.name}</p>
         <div className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
-          <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-          <span className="font-semibold text-foreground">4.6</span>
-          <span>·</span><span>20–30 min</span>
+          {rating.count > 0 ? (
+            <ReviewStars rating={rating.avg} size="sm" showValue count={rating.count} />
+          ) : (
+            <span className="text-[10px] text-muted-foreground">No reviews yet</span>
+          )}
         </div>
       </div>
     </Link>

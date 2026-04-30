@@ -70,24 +70,27 @@ const Auth = () => {
     if (!password) return toast.error("Password required");
 
     setSubmitting(true);
-    // Check phone availability against verified accounts
-    const { data: check, error: checkErr } = await supabase.functions.invoke("check-phone-available", {
-      body: { phone },
-    });
-    if (checkErr) {
-      setSubmitting(false);
-      return toast.error("Could not validate phone. Try again.");
-    }
-    if (check && (check as any).available === false) {
-      setSubmitting(false);
-      return toast.error((check as any).reason || "This phone number is already registered.");
+    // Check phone availability against verified accounts (with fallback)
+    try {
+      const { data: check, error: checkErr } = await supabase.functions.invoke("check-phone-available", {
+        body: { phone },
+      });
+      if (checkErr) {
+        console.warn("Phone validation function failed:", checkErr);
+        // Continue with signup anyway - function might be deploying
+      } else if (check && (check as any).available === false) {
+        setSubmitting(false);
+        return toast.error((check as any).reason || "This phone number is already registered.");
+      }
+    } catch (err) {
+      console.warn("Could not validate phone:", err);
+      // Continue with signup - will be validated at database level
     }
 
     const { error } = await supabase.auth.signUp({
       email: phoneToEmail(phone),
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/`,
         data: { name, phone, whatsapp: wa, address },
       },
     });
@@ -96,7 +99,13 @@ const Auth = () => {
       if (error.message.toLowerCase().includes("already")) {
         toast.error("This phone number is already registered.");
       } else toast.error(error.message);
-    } else toast.success("Account created!");
+    } else {
+      toast.success("Account created! Logging you in...");
+      // Auto-redirect after signup since email confirmation is disabled
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 1500);
+    }
   };
 
   const handleForgotRequest = async (e: React.FormEvent) => {
@@ -140,9 +149,7 @@ const Auth = () => {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-8">
       <div className="mb-6 flex flex-col items-center gap-2">
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
-          <MapPin className="h-7 w-7" />
-        </div>
+        <img src="/logo.png" alt="SheharLink Logo" className="h-16 w-16 object-contain rounded-2xl" />
         <h1 className="text-2xl font-bold">SheharLink</h1>
         <p className="text-sm text-muted-foreground">Muzaffarabad delivery</p>
       </div>

@@ -5,7 +5,11 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Award, Phone, MapPin, KeyRound, Trash2, ShieldCheck, ShieldOff } from "lucide-react";
+import {
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { ArrowLeft, Award, Phone, MapPin, KeyRound, Trash2, ShieldCheck, ShieldOff, Pencil, Plus, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
 interface Profile {
@@ -35,6 +39,9 @@ const AdminUsers = () => {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Profile | null>(null);
   const [orderStats, setOrderStats] = useState<{ delivered: number; cancelled: number; total: number } | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editForm, setEditForm] = useState<Partial<Profile>>({});
+  const [saving, setSaving] = useState(false);
 
   const load = async () => {
     const [{ data: ps }, { data: os }] = await Promise.all([
@@ -99,6 +106,45 @@ const AdminUsers = () => {
     setSelected((s) => (s ? { ...s, is_verified: action === "verify" } : s));
   };
 
+  const startEdit = (p: Profile) => {
+    setEditForm(p);
+    setEditOpen(true);
+  };
+
+  const saveUser = async () => {
+    if (!editForm.id) return;
+    setSaving(true);
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        name: editForm.name,
+        phone: editForm.phone,
+        whatsapp: editForm.whatsapp,
+        address: editForm.address,
+        credit_score: editForm.credit_score,
+      })
+      .eq("id", editForm.id);
+    setSaving(false);
+    if (error) toast.error(error.message);
+    else {
+      toast.success("User updated");
+      setEditOpen(false);
+      load();
+      if (selected?.id === editForm.id) setSelected({ ...selected, ...editForm } as Profile);
+    }
+  };
+
+  const deleteUser = async (id: string) => {
+    if (!confirm("Are you sure? This will delete the user profile AND their auth account permanently.")) return;
+    const { data, error } = await supabase.functions.invoke("admin-verify-user", {
+      body: { action: "delete_permanently", userId: id },
+    });
+    if (error || (data as any)?.error) return toast.error((data as any)?.error || error?.message || "Failed");
+    toast.success("User deleted permanently");
+    setSelected(null);
+    load();
+  };
+
   if (selected) {
     return (
       <div className="mx-auto max-w-2xl space-y-4 p-4">
@@ -107,6 +153,9 @@ const AdminUsers = () => {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <h1 className="text-xl font-bold">User Details</h1>
+          <div className="flex-1" />
+          <Button variant="ghost" size="icon" onClick={() => startEdit(selected)}><Pencil className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" onClick={() => deleteUser(selected.id)} className="text-destructive"><Trash2 className="h-4 w-4" /></Button>
         </div>
         <Card className="space-y-3 p-4">
           <Row label="Name" value={selected.name || "—"} />
@@ -147,6 +196,10 @@ const AdminUsers = () => {
       <div className="flex items-center gap-2">
         <Link to="/admin"><Button variant="ghost" size="icon"><ArrowLeft className="h-5 w-5" /></Button></Link>
         <h1 className="text-xl font-bold">Users</h1>
+        <div className="flex-1" />
+        <Button size="sm" onClick={() => toast.info("To create a new user, please use the standard Sign Up page.")}>
+          <UserPlus className="mr-1 h-4 w-4" /> New User
+        </Button>
       </div>
 
       <Input placeholder="Search by name or phone…" value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -184,6 +237,38 @@ const AdminUsers = () => {
           </div>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Edit User</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>Full Name</Label>
+              <Input value={editForm.name ?? ""} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+            </div>
+            <div>
+              <Label>Phone</Label>
+              <Input value={editForm.phone ?? ""} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} />
+            </div>
+            <div>
+              <Label>WhatsApp</Label>
+              <Input value={editForm.whatsapp ?? ""} onChange={(e) => setEditForm({ ...editForm, whatsapp: e.target.value })} />
+            </div>
+            <div>
+              <Label>Address</Label>
+              <Input value={editForm.address ?? ""} onChange={(e) => setEditForm({ ...editForm, address: e.target.value })} />
+            </div>
+            <div>
+              <Label>Credit Score (0 - 1000)</Label>
+              <Input type="number" value={editForm.credit_score ?? 0} onChange={(e) => setEditForm({ ...editForm, credit_score: Number(e.target.value) })} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
+            <Button onClick={saveUser} disabled={saving}>{saving ? "Saving..." : "Save Changes"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

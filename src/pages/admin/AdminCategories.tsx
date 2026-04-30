@@ -24,7 +24,7 @@ interface Category {
 
 const slugify = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
-const AdminCategories = () => {
+const AdminCategories = ({ embedded = false }: { embedded?: boolean }) => {
   const [cats, setCats] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -84,14 +84,28 @@ const AdminCategories = () => {
   };
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4 p-4">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <Link to="/admin"><Button variant="ghost" size="icon"><ArrowLeft className="h-5 w-5" /></Button></Link>
-          <h1 className="text-xl font-bold">Categories</h1>
+    <div className={embedded ? "space-y-4" : "mx-auto max-w-3xl space-y-4 p-4"}>
+      {!embedded && (
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Link to="/admin"><Button variant="ghost" size="icon"><ArrowLeft className="h-5 w-5" /></Button></Link>
+            <h1 className="text-xl font-bold">Categories</h1>
+          </div>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild><Button onClick={startCreate}><Plus className="h-4 w-4" /> New</Button></DialogTrigger>
+          </Dialog>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild><Button onClick={startCreate}><Plus className="h-4 w-4" /> New</Button></DialogTrigger>
+      )}
+
+      {embedded && (
+        <div className="flex justify-end">
+          <Button onClick={startCreate} size="sm"><Plus className="h-4 w-4" /> New Category</Button>
+        </div>
+      )}
+
+      {!embedded && <div className="h-px bg-border" />}
+
+      <Dialog open={open} onOpenChange={setOpen}>
           <DialogContent>
             <DialogHeader><DialogTitle>{form.id ? "Edit category" : "New category"}</DialogTitle></DialogHeader>
             <div className="space-y-3">
@@ -122,7 +136,7 @@ const AdminCategories = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
+
 
       {loading ? <p className="text-sm text-muted-foreground">Loading…</p> : (
         <div className="space-y-2">

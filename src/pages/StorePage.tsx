@@ -4,6 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCart } from "@/hooks/useCart";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useSEO } from "@/hooks/useSEO";
+import { useStoreRating } from "@/hooks/useReviews";
+import { ReviewSection } from "@/components/ReviewSection";
+import { ReviewStars } from "@/components/ReviewStars";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Heart, LayoutGrid, List, Plus, Star, ShoppingCart } from "lucide-react";
 
@@ -91,8 +94,11 @@ const StorePage = () => {
   );
   const storeSubtotal = cartItemsThisStore.reduce((s, i) => s + i.price * i.qty, 0);
 
+  const storeRating = useStoreRating(store?.id ?? null);
+
   if (loading) return <div className="space-y-3 p-4">{[1,2,3,4].map(i => <div key={i} className="h-20 animate-pulse rounded-lg bg-muted" />)}</div>;
   if (!store) return <div className="p-8 text-center text-sm text-muted-foreground">Store not found.</div>;
+
 
   const addToCart = (p: Product) => {
     cart.add({
@@ -124,9 +130,7 @@ const StorePage = () => {
           <h1 className="text-xl font-extrabold">{store.name}</h1>
           {store.description && <p className="mt-1 text-xs text-muted-foreground">{store.description}</p>}
           <div className="mt-2 flex items-center gap-3 text-xs">
-            <span className="flex items-center gap-1"><Star className="h-3 w-3 fill-yellow-400 text-yellow-400" /><span className="font-semibold">4.6</span></span>
-            <span className="text-muted-foreground">·</span>
-            <span className="text-muted-foreground">20–30 min delivery</span>
+            <ReviewStars rating={storeRating.avg} size="sm" showValue count={storeRating.count} />
           </div>
         </div>
       </div>
@@ -211,6 +215,15 @@ const StorePage = () => {
             })}
           </ul>
         )}
+      </div>
+
+      {/* Reviews */}
+      <div className="px-4 pt-6">
+        <ReviewSection
+          storeId={store.id}
+          avgRating={storeRating.avg}
+          reviewCount={storeRating.count}
+        />
       </div>
 
       {cartItemsThisStore.length > 0 && (
