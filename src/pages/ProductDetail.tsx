@@ -44,7 +44,8 @@ const ProductDetail = () => {
 
     const finalize = (data: any) => {
       if (!data || !data.is_visible || !data.stores?.is_visible || !data.stores?.is_active) {
-        setProduct(null);
+        toast.error("Product is currently unavailable");
+        navigate("/", { replace: true });
       } else {
         setProduct(data as ProductFull);
       }

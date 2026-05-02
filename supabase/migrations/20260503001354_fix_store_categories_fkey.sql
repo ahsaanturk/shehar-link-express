@@ -1,0 +1,1 @@
+﻿ALTER TABLE public.store_categories ADD CONSTRAINT store_categories_store_id_fkey FOREIGN KEY (store_id) REFERENCES public.stores(id) ON DELETE CASCADE; ALTER TABLE public.store_categories ADD CONSTRAINT store_categories_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.categories(id) ON DELETE CASCADE;

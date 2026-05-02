@@ -66,13 +66,15 @@ const CategoryDetail = () => {
     const to = from + PAGE - 1;
     let q = supabase
       .from("products")
-      .select("id,name,price,image_url,store_id,stores!inner(name, store_categories!inner(category_id))")
+      .select("id,name,price,image_url,store_id,stores!inner(name, slug, is_active, store_categories!inner(category_id))")
       .eq("is_available", true)
+      .eq("is_visible", true)
+      .eq("stores.is_active", true)
       .eq("stores.store_categories.category_id", category.id)
       .order("created_at", { ascending: false })
       .range(from, to);
     const { data } = await q;
-    let list = (data ?? []) as Product[];
+    let list = (data ?? []) as any[];
     if (areaStoreIds) list = list.filter((p) => areaStoreIds.includes(p.store_id));
     setProducts((prev) => [...prev, ...list]);
     setHasMore(list.length === PAGE);

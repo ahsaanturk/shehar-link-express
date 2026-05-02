@@ -207,9 +207,14 @@ const ProductsPanel = ({ filter, query }: { filter: ProductsFilter; query: strin
     setLoading(true);
     const from = page * PAGE;
     const to = from + PAGE - 1;
+    
+    // We must ensure the store is active
     let q = supabase.from("products")
-      .select("id,name,price,image_url,store_id,stores(name)")
-      .eq("is_available", true);
+      .select("id,name,price,image_url,store_id,stores!inner(name, slug, is_active)")
+      .eq("is_available", true)
+      .eq("is_visible", true)
+      .eq("stores.is_active", true);
+      
     if (filter === "popular") q = q.eq("is_popular", true);
     if (filter === "near") {
       if (!areaIds) { setLoading(false); return; }
@@ -218,7 +223,7 @@ const ProductsPanel = ({ filter, query }: { filter: ProductsFilter; query: strin
     }
     q = q.order("sort_order").order("created_at", { ascending: false }).range(from, to);
     const { data } = await q;
-    const list = (data ?? []) as Product[];
+    const list = (data ?? []) as any[];
     setProducts((prev) => [...prev, ...list]);
     setHasMore(list.length === PAGE);
     setPage((p) => p + 1);

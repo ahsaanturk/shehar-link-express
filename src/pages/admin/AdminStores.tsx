@@ -202,10 +202,24 @@ const AdminStores = ({ embedded = false }: { embedded?: boolean }) => {
   };
 
   const remove = async (s: Store) => {
-    if (!confirm(`Delete "${s.name}"? Products will also be deleted.`)) return;
+    // First warning
+    const firstConfirm = confirm(`Are you sure you want to delete "${s.name}"? All products related to this store will also be PERMANENTLY deleted.`);
+    if (!firstConfirm) return;
+
+    // Second warning
+    const secondConfirm = confirm(`FINAL WARNING: This action cannot be undone. Are you absolutely sure you want to delete "${s.name}" and all its products?`);
+    if (!secondConfirm) return;
+
     const { error } = await supabase.from("stores").delete().eq("id", s.id);
-    if (error) return toast.error(error.message);
+    if (error) {
+      if (error.message.includes("violates foreign key constraint")) {
+        return toast.error("Cannot delete store because it has existing orders. Please deactivate it instead.");
+      }
+      return toast.error(error.message);
+    }
+    
     setStores((p) => p.filter((x) => x.id !== s.id));
+    toast.success(`Store "${s.name}" and its products have been deleted.`);
   };
 
   const toggleAreaInForm = (id: string) => {

@@ -83,7 +83,9 @@ const StorePage = () => {
     const finder = isSlug ? q.eq("slug", lookup) : q.eq("id", lookup);
     finder.maybeSingle().then(async ({ data }) => {
       if (!data || !data.is_active || !data.is_visible) {
-        setStore(null); setProducts([]); setLoading(false); return;
+        toast.error("Store is currently unavailable");
+        navigate("/", { replace: true });
+        return;
       }
       setStore(data as Store);
       const { data: pd } = await supabase.from("products")

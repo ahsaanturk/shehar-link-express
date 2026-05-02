@@ -19,19 +19,22 @@ import { toast } from "sonner";
 interface AdminOrder {
   id: string;
   short_id: string;
-  status: OrderStatus;
-  items: any;
-  subtotal: number;
+  status: any; // Allow mixed statuses
+  items?: any;
+  subtotal?: number;
   delivery_fee: number;
   total_amount: number;
   customer_name: string;
   customer_phone: string;
   customer_address: string;
-  notes: string | null;
+  notes?: string | null;
+  description?: string; // For custom orders
   created_at: string;
-  store_id: string;
-  cancellation_reason: string | null;
-  cancelled_by_admin: boolean;
+  store_id?: string | null;
+  store_name?: string | null; // For custom orders
+  cancellation_reason?: string | null;
+  cancelled_by_admin?: boolean;
+  type: "standard" | "custom";
 }
 
 const FILTERS: { value: OrderStatus | "all"; label: string }[] = [
@@ -50,6 +53,20 @@ const NEXT_ACTIONS: Partial<Record<OrderStatus, { next: OrderStatus; label: stri
 };
 
 const buildWhatsAppText = (o: AdminOrder, storeName?: string) => {
+  if (o.type === "custom") {
+    return [
+      `*SheharLink Custom Order ${o.short_id}*`,
+      `Store: ${o.store_name || "Custom Location"}`,
+      `Customer: ${o.customer_name}`,
+      `Phone: ${o.customer_phone}`,
+      `Address: ${o.customer_address}`,
+      "",
+      `Request: ${o.description}`,
+      "",
+      `*Delivery Fee (COD): Rs. ${o.total_amount}*`,
+    ].join("\n");
+  }
+
   const lines = [
     `*SheharLink Order ${o.short_id}*`,
     storeName ? `From: ${storeName}` : null,
@@ -78,43 +95,40 @@ const AdminOrders = () => {
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
 
-  useEffect(() => {
-    const load = async () => {
-      const { data: o } = await supabase
-        .from("orders")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(200);
-      const list = (o ?? []) as AdminOrder[];
-      setOrders(list);
-      const ids = Array.from(new Set(list.map((x) => x.store_id)));
-      if (ids.length) {
-        const { data: s } = await supabase.from("stores").select("id,name").in("id", ids);
-        setStoreNames(Object.fromEntries((s ?? []).map((x: any) => [x.id, x.name])));
-      }
-      setLoading(false);
-    };
-    load();
+  const load = async () => {
+    setLoading(true);
+    const [{ data: std }, { data: cust }] = await Promise.all([
+      supabase.from("orders").select("*").order("created_at", { ascending: false }).limit(100),
+      supabase.from("custom_orders").select("*").order("created_at", { ascending: false }).limit(100),
+    ]);
 
-    const channel = supabase
-      .channel("admin-orders")
-      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, (payload) => {
-        setOrders((prev) => {
-          if (payload.eventType === "INSERT") {
-            toast.success(`New order ${(payload.new as any).short_id}`);
-            return [payload.new as AdminOrder, ...prev];
-          }
-          if (payload.eventType === "UPDATE") {
-            const updated = payload.new as AdminOrder;
-            setSelected((sel) => (sel?.id === updated.id ? updated : sel));
-            return prev.map((o) => (o.id === updated.id ? updated : o));
-          }
-          if (payload.eventType === "DELETE") return prev.filter((o) => o.id !== (payload.old as any).id);
-          return prev;
-        });
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    const combined: AdminOrder[] = [
+      ...(std ?? []).map(o => ({ ...o, type: "standard" as const })),
+      ...(cust ?? []).map(o => ({ 
+        ...o, 
+        type: "custom" as const, 
+        total_amount: o.delivery_fee ?? 0,
+        subtotal: 0,
+        notes: o.admin_notes
+      })),
+    ];
+
+    combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    setOrders(combined);
+
+    const ids = Array.from(new Set((std ?? []).map((x) => x.store_id)));
+    if (ids.length) {
+      const { data: s } = await supabase.from("stores").select("id,name").in("id", ids);
+      setStoreNames(Object.fromEntries((s ?? []).map((x: any) => [x.id, x.name])));
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    load();
+    const ch1 = supabase.channel("admin-orders-std").on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => load()).subscribe();
+    const ch2 = supabase.channel("admin-orders-cust").on("postgres_changes", { event: "*", schema: "public", table: "custom_orders" }, () => load()).subscribe();
+    return () => { supabase.removeChannel(ch1); supabase.removeChannel(ch2); };
   }, []);
 
   const visible = useMemo(
@@ -188,11 +202,12 @@ const AdminOrders = () => {
       ) : (
         <div className="space-y-2">
           {visible.map((o) => {
+            const isCustom = o.type === "custom";
             const itemCount = Array.isArray(o.items) ? o.items.reduce((s: number, i: any) => s + (i.qty ?? 0), 0) : 0;
             return (
               <Card
                 key={o.id}
-                className="cursor-pointer p-4 transition active:scale-[0.99]"
+                className={`cursor-pointer p-4 transition active:scale-[0.99] ${isCustom ? "border-primary/20 bg-primary/5" : ""}`}
                 onClick={() => setSelected(o)}
               >
                 <div className="flex items-center justify-between">
@@ -200,11 +215,12 @@ const AdminOrders = () => {
                     <div className="flex items-center gap-2">
                       <p className="font-bold">{o.short_id}</p>
                       <StatusBadge status={o.status} />
+                      {isCustom && <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[8px] font-bold text-primary uppercase">Custom</span>}
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {o.customer_name} · {itemCount} item{itemCount !== 1 ? "s" : ""} · {formatDistanceToNow(new Date(o.created_at), { addSuffix: true })}
+                      {o.customer_name} · {isCustom ? "Custom Request" : `${itemCount} item${itemCount !== 1 ? "s" : ""}`} · {formatDistanceToNow(new Date(o.created_at), { addSuffix: true })}
                     </p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">{storeNames[o.store_id] ?? "—"}</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{isCustom ? o.store_name : (storeNames[o.store_id!] ?? "—")}</p>
                   </div>
                   <p className="text-sm font-bold">Rs. {o.total_amount}</p>
                 </div>
@@ -223,7 +239,13 @@ const AdminOrders = () => {
                   <span>{selected.short_id}</span>
                   <StatusBadge status={selected.status} />
                 </DrawerTitle>
-                <DrawerDescription>{storeNames[selected.store_id] ?? ""}</DrawerDescription>
+                <DrawerDescription>
+                  {selected.type === "custom" ? (
+                    <span className="flex items-center gap-1.5 text-primary font-bold uppercase text-[10px]">
+                      Custom Order Request from {selected.store_name}
+                    </span>
+                  ) : (storeNames[selected.store_id!] ?? "")}
+                </DrawerDescription>
               </DrawerHeader>
 
               <div className="space-y-3 px-4 pb-4 text-sm">
@@ -238,23 +260,31 @@ const AdminOrders = () => {
                   {selected.notes && <p className="mt-1 text-xs text-muted-foreground">Note: {selected.notes}</p>}
                 </div>
 
-                <ul className="divide-y divide-border rounded-lg border border-border">
-                  {(selected.items as any[]).map((i: any, idx: number) => (
-                    <li key={idx} className="flex justify-between p-2.5">
-                      <span>{i.qty} × {i.name}</span>
-                      <span className="text-muted-foreground">Rs. {i.price * i.qty}</span>
-                    </li>
-                  ))}
-                </ul>
+                {selected.type === "custom" ? (
+                  <div className="rounded-xl border border-border bg-muted/40 p-3">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Customer Request</p>
+                    <p className="text-sm whitespace-pre-wrap italic">"{selected.description}"</p>
+                  </div>
+                ) : (
+                  <ul className="divide-y divide-border rounded-lg border border-border">
+                    {(selected.items as any[]).map((i: any, idx: number) => (
+                      <li key={idx} className="flex justify-between p-2.5">
+                        <span>{i.qty} × {i.name}</span>
+                        <span className="text-muted-foreground">Rs. {i.price * i.qty}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
 
                 <div className="space-y-1 rounded-lg bg-muted p-3 text-xs">
-                  <div className="flex justify-between"><span>Subtotal</span><span>Rs. {selected.subtotal}</span></div>
+                  {selected.type === "standard" && <div className="flex justify-between"><span>Subtotal</span><span>Rs. {selected.subtotal}</span></div>}
                   <div className="flex justify-between"><span>Delivery</span><span>Rs. {selected.delivery_fee}</span></div>
                   <div className="flex justify-between text-base font-bold"><span>Total (COD)</span><span>Rs. {selected.total_amount}</span></div>
                 </div>
 
                 <Button variant="outline" className="w-full" onClick={() => shareWhatsApp(selected)}>
-                  <MessageCircle className="mr-2 h-4 w-4" /> Share to Store WhatsApp
+                  <MessageCircle className="mr-2 h-4 w-4" /> 
+                  {selected.type === "custom" ? "Share Details via WhatsApp" : "Share to Store WhatsApp"}
                 </Button>
 
                 {selected.status === "cancelled" && selected.cancellation_reason && (
@@ -266,7 +296,7 @@ const AdminOrders = () => {
                   </div>
                 )}
 
-                {(selected.status === "preparing" || selected.status === "picked_up") && (
+                {(selected.status === "preparing" || selected.status === "picked_up") && selected.type === "standard" && (
                   <div className="space-y-2">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Notify Customer</p>
                     <div className="grid grid-cols-2 gap-2">
@@ -280,7 +310,7 @@ const AdminOrders = () => {
                   </div>
                 )}
 
-                {NEXT_ACTIONS[selected.status]?.map((a) => (
+                {selected.type === "standard" && NEXT_ACTIONS[selected.status as OrderStatus]?.map((a) => (
                   <Button
                     key={a.next}
                     variant={a.next === "cancelled" ? "destructive" : "default"}
@@ -291,6 +321,12 @@ const AdminOrders = () => {
                     {updating ? <Loader2 className="h-4 w-4 animate-spin" /> : a.label}
                   </Button>
                 ))}
+
+                {selected.type === "custom" && (
+                  <p className="text-[10px] text-center text-muted-foreground italic bg-secondary/10 p-2 rounded-lg border">
+                    Manage full workflow for custom orders in the "Inventory > Banners" section.
+                  </p>
+                )}
               </div>
             </div>
           )}

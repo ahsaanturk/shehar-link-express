@@ -10,10 +10,11 @@ import { formatDistanceToNow } from "date-fns";
 interface OrderRow {
   id: string;
   short_id: string;
-  status: OrderStatus;
+  status: any;
   total_amount: number;
   created_at: string;
-  items: any;
+  items?: any;
+  type: "standard" | "custom";
 }
 
 const Orders = () => {
@@ -21,34 +22,28 @@ const Orders = () => {
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const load = async () => {
     if (!user) return;
-    supabase
-      .from("orders")
-      .select("id,short_id,status,total_amount,created_at,items")
-      .eq("customer_id", user.id)
-      .order("created_at", { ascending: false })
-      .then(({ data }) => {
-        setOrders((data ?? []) as OrderRow[]);
-        setLoading(false);
-      });
+    const [{ data: std }, { data: cust }] = await Promise.all([
+      supabase.from("orders").select("id,short_id,status,total_amount,created_at,items").eq("customer_id", user.id),
+      supabase.from("custom_orders").select("id,short_id,status,delivery_fee,created_at").eq("customer_id", user.id),
+    ]);
 
-    const channel = supabase
-      .channel("orders-customer")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "orders", filter: `customer_id=eq.${user.id}` },
-        (payload) => {
-          setOrders((prev) => {
-            if (payload.eventType === "INSERT") return [payload.new as OrderRow, ...prev];
-            if (payload.eventType === "UPDATE") return prev.map((o) => (o.id === (payload.new as any).id ? (payload.new as OrderRow) : o));
-            if (payload.eventType === "DELETE") return prev.filter((o) => o.id !== (payload.old as any).id);
-            return prev;
-          });
-        },
-      )
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    const combined: OrderRow[] = [
+      ...(std ?? []).map(o => ({ ...o, type: "standard" as const })),
+      ...(cust ?? []).map(o => ({ ...o, type: "custom" as const, total_amount: o.delivery_fee ?? 0 })),
+    ];
+
+    combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    setOrders(combined);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    load();
+    const chStd = supabase.channel("orders-std").on("postgres_changes", { event: "*", schema: "public", table: "orders", filter: `customer_id=eq.${user?.id}` }, () => load()).subscribe();
+    const chCust = supabase.channel("orders-cust").on("postgres_changes", { event: "*", schema: "public", table: "custom_orders", filter: `customer_id=eq.${user?.id}` }, () => load()).subscribe();
+    return () => { supabase.removeChannel(chStd); supabase.removeChannel(chCust); };
   }, [user]);
 
   if (loading) return <div className="space-y-3 p-4">{[1,2,3].map(i => <div key={i} className="h-20 animate-pulse rounded-lg bg-muted" />)}</div>;
@@ -67,20 +62,40 @@ const Orders = () => {
     <div className="space-y-3 p-4">
       <h1 className="text-xl font-bold">Your orders</h1>
       {orders.map((o) => {
+        const isCustom = o.type === "custom";
         const itemCount = Array.isArray(o.items) ? o.items.reduce((s: number, i: any) => s + (i.qty ?? 0), 0) : 0;
+        
         return (
-          <Link key={o.id} to={`/orders/${o.id}`}>
-            <Card className="flex items-center justify-between p-4 transition active:scale-[0.99]">
+          <Link key={o.id} to={isCustom ? "#" : `/orders/${o.id}`}>
+            <Card className={`flex items-center justify-between p-4 transition active:scale-[0.99] ${isCustom ? "border-primary/20 bg-primary/5" : ""}`}>
               <div>
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-bold">{o.short_id}</p>
-                  <StatusBadge status={o.status} />
+                  {isCustom ? (
+                    <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[9px] font-bold text-primary uppercase">Custom Request</span>
+                  ) : (
+                    <StatusBadge status={o.status as any} />
+                  )}
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {itemCount} item{itemCount !== 1 ? "s" : ""} · {formatDistanceToNow(new Date(o.created_at), { addSuffix: true })}
+                  {isCustom ? (
+                    <span className="flex items-center gap-1 uppercase font-bold text-[10px]">
+                      <span className={
+                        o.status === "delivered" ? "text-green-600" : 
+                        o.status === "rejected" ? "text-destructive" : 
+                        "text-amber-600"
+                      }>{o.status}</span> 
+                      · {formatDistanceToNow(new Date(o.created_at), { addSuffix: true })}
+                    </span>
+                  ) : (
+                    <>{itemCount} item{itemCount !== 1 ? "s" : ""} · {formatDistanceToNow(new Date(o.created_at), { addSuffix: true })}</>
+                  )}
                 </p>
               </div>
-              <p className="text-sm font-bold">Rs. {o.total_amount}</p>
+              <div className="text-right">
+                <p className="text-sm font-bold">Rs. {o.total_amount || 0}</p>
+                {isCustom && !o.total_amount && <p className="text-[10px] text-muted-foreground italic">Fee pending</p>}
+              </div>
             </Card>
           </Link>
         );

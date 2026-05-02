@@ -33,6 +33,8 @@ export default function CustomOrder() {
   const [stores, setStores] = useState<Store[]>([]);
   const [storeId, setStoreId] = useState("");
   const [storeName, setStoreName] = useState("");
+  const [isOtherStore, setIsOtherStore] = useState(false);
+  const [customStoreName, setStoreManual] = useState("");
   const [description, setDescription] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -85,14 +87,23 @@ export default function CustomOrder() {
   }, [user]);
 
   const handleStoreChange = (val: string) => {
-    setStoreId(val);
-    const s = stores.find(x => x.id === val);
-    setStoreName(s?.name ?? "");
+    if (val === "other") {
+      setStoreId("");
+      setStoreName("");
+      setIsOtherStore(true);
+    } else {
+      setStoreId(val);
+      const s = stores.find(x => x.id === val);
+      setStoreName(s?.name ?? "");
+      setIsOtherStore(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!storeId) return toast.error("Please select a store");
+    const finalStoreName = isOtherStore ? customStoreName.trim() : storeName;
+    if (!isOtherStore && !storeId) return toast.error("Please select a store");
+    if (isOtherStore && !finalStoreName) return toast.error("Please enter the store name");
     if (!description.trim()) return toast.error("Please describe what you need");
     if (!name.trim() || !phone.trim() || !address.trim())
       return toast.error("Please fill your name, phone, and address");
@@ -100,8 +111,8 @@ export default function CustomOrder() {
     setSubmitting(true);
     const { data, error } = await supabase.from("custom_orders").insert({
       customer_id: user?.id ?? null,
-      store_id: storeId,
-      store_name: storeName,
+      store_id: isOtherStore ? null : storeId,
+      store_name: finalStoreName,
       description: description.trim(),
       customer_name: name.trim(),
       customer_phone: phone.trim(),
@@ -169,7 +180,7 @@ export default function CustomOrder() {
         {/* Store select */}
         <div className="space-y-1.5">
           <Label>Select Store / سٹور چنیں</Label>
-          <Select value={storeId} onValueChange={handleStoreChange}>
+          <Select value={isOtherStore ? "other" : storeId} onValueChange={handleStoreChange}>
             <SelectTrigger className="rounded-xl">
               <SelectValue placeholder="Choose a store…" />
             </SelectTrigger>
@@ -177,9 +188,22 @@ export default function CustomOrder() {
               {stores.map(s => (
                 <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
               ))}
+              <SelectItem value="other" className="font-bold text-primary italic">+ Other / Not Listed</SelectItem>
             </SelectContent>
           </Select>
         </div>
+
+        {isOtherStore && (
+          <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1">
+            <Label>Enter Store Name / سٹور کا نام لکھیں</Label>
+            <Input 
+              value={customStoreName} 
+              onChange={e => setStoreManual(e.target.value)} 
+              placeholder="e.g. Local General Store, Bakery, etc."
+              className="rounded-xl"
+            />
+          </div>
+        )}
 
         {/* Description with animated placeholder */}
         <div className="space-y-1.5">

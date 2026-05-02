@@ -5,11 +5,11 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Crown, Shield, UserIcon } from "lucide-react";
+import { ArrowLeft, Crown, Shield, UserIcon, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 
-type Role = "customer" | "admin" | "super_admin";
+type Role = "customer" | "admin" | "super_admin" | "rider";
 
 interface ProfileRow {
   id: string;
@@ -49,7 +49,7 @@ const AdminRoles = () => {
     );
   }
 
-  const toggleRole = async (uid: string, role: "admin" | "super_admin", has: boolean) => {
+  const toggleRole = async (uid: string, role: "admin" | "super_admin" | "rider", has: boolean) => {
     if (uid === user?.id && role === "super_admin" && has) {
       return toast.error("You cannot remove your own super admin role.");
     }
@@ -94,6 +94,7 @@ const AdminRoles = () => {
         {filtered.map((p) => {
           const isAdmin = p.roles.includes("admin");
           const isSuper = p.roles.includes("super_admin");
+          const isRider = p.roles.includes("rider");
           return (
             <Card key={p.id} className="space-y-3 p-3">
               <div className="flex items-center gap-3">
@@ -107,15 +108,23 @@ const AdminRoles = () => {
                 <div className="flex flex-wrap justify-end gap-1">
                   {isSuper && <Badge className="bg-yellow-500/15 text-yellow-700 hover:bg-yellow-500/15"><Crown className="mr-1 h-3 w-3" />Super</Badge>}
                   {isAdmin && <Badge variant="secondary"><Shield className="mr-1 h-3 w-3" />Admin</Badge>}
+                  {isRider && <Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary"><Truck className="mr-1 h-3 w-3" />Rider</Badge>}
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <Button
                   size="sm" variant={isAdmin ? "destructive" : "outline"}
                   disabled={busy === p.id + "admin"}
                   onClick={() => toggleRole(p.id, "admin", isAdmin)}
                 >
                   {isAdmin ? "Remove Admin" : "Make Admin"}
+                </Button>
+                <Button
+                  size="sm" variant={isRider ? "destructive" : "outline"}
+                  disabled={busy === p.id + "rider"}
+                  onClick={() => toggleRole(p.id, "rider", isRider)}
+                >
+                  {isRider ? "Remove Rider" : "Make Rider"}
                 </Button>
                 <Button
                   size="sm" variant={isSuper ? "destructive" : "outline"}

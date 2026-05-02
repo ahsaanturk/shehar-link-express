@@ -38,7 +38,7 @@ interface Banner {
 
 const PAGE = 10;
 const STORE_SELECT = "id,slug,name,image_url,description,category_id,is_popular,is_visible";
-const PRODUCT_SELECT = "id,slug,name,price,image_url,store_id,is_visible,stores(name,slug)";
+const PRODUCT_SELECT = "id,slug,name,price,image_url,store_id,is_visible";
 
 const Home = () => {
   const navigate = useNavigate();
@@ -89,8 +89,15 @@ const Home = () => {
           .eq("is_visible", true).eq("show_on_home", true).order("sort_order"),
         supabase.from("stores").select(STORE_SELECT)
           .eq("is_active", true).eq("is_visible", true).eq("is_popular", true).order("sort_order").limit(10),
-        supabase.from("products").select(PRODUCT_SELECT)
-          .eq("is_available", true).eq("is_visible", true).eq("is_popular", true).order("sort_order").limit(12),
+        supabase.from("products").select(`
+          ${PRODUCT_SELECT},
+          stores!inner(name,slug,is_active)
+        `)
+          .eq("is_available", true)
+          .eq("is_visible", true)
+          .eq("is_popular", true)
+          .eq("stores.is_active", true)
+          .order("sort_order").limit(12),
         supabase.from("homepage_banners").select("*").eq("is_active", true).order("sort_order"),
       ]);
       setCategories((catsRes.data ?? []) as Category[]);
@@ -117,14 +124,23 @@ const Home = () => {
     setLoadingMore(true);
     const from = page * PAGE;
     const to = from + PAGE - 1;
+    
+    // We need to ensure we only get products from ACTIVE stores
     let query = supabase
       .from("products")
-      .select(PRODUCT_SELECT)
-      .eq("is_available", true).eq("is_visible", true)
+      .select(`
+        ${PRODUCT_SELECT},
+        stores!inner(name,slug,is_active)
+      `)
+      .eq("is_available", true)
+      .eq("is_visible", true)
+      .eq("stores.is_active", true)
       .order("created_at", { ascending: false })
       .range(from, to);
+      
     if (areaStoreIds.length > 0) query = query.in("store_id", areaStoreIds);
     else { setHasMore(false); setLoadingMore(false); return; }
+    
     const { data } = await query;
     const list = (data ?? []) as Product[];
     setNearProducts((prev) => [...prev, ...list]);
