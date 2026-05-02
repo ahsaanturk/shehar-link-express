@@ -324,7 +324,7 @@ const AdminOrders = () => {
 
                 {selected.type === "custom" && (
                   <p className="text-[10px] text-center text-muted-foreground italic bg-secondary/10 p-2 rounded-lg border">
-                    Manage full workflow for custom orders in the "Inventory > Banners" section.
+                    Manage full workflow for custom orders in the "Inventory &gt; Banners" section.
                   </p>
                 )}
               </div>
