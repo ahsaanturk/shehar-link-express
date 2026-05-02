@@ -5,7 +5,7 @@ import { Loader2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 
 interface Props {
-  bucket: "store-images" | "product-images";
+  bucket: "store-images" | "product-images" | "banner-images";
   value: string | null;
   onChange: (url: string | null) => void;
 }

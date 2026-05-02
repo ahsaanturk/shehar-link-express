@@ -32,7 +32,7 @@ CREATE POLICY "coupons_public_read" ON coupons
 -- Admin full access (uses same is_admin() helper already in DB)
 CREATE POLICY "coupons_admin_all" ON coupons
   FOR ALL USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin','super_admin'))
+    public.has_role(auth.uid(), 'admin')
   );
 
 -- validate_coupon RPC
@@ -129,7 +129,7 @@ CREATE POLICY "custom_orders_owner_read" ON custom_orders
 -- Admin full access
 CREATE POLICY "custom_orders_admin_all" ON custom_orders
   FOR ALL USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin','super_admin'))
+    public.has_role(auth.uid(), 'admin')
   );
 
 -- ============================================================
@@ -153,7 +153,7 @@ CREATE POLICY "banners_public_read" ON homepage_banners
 
 CREATE POLICY "banners_admin_all" ON homepage_banners
   FOR ALL USING (
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin','super_admin'))
+    public.has_role(auth.uid(), 'admin')
   );
 
 -- Seed one default banner

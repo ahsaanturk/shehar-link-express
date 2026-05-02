@@ -2,12 +2,13 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Store, ShoppingBag, LayoutGrid, Tag, ClipboardList } from "lucide-react";
+import { ArrowLeft, Store, ShoppingBag, LayoutGrid, Tag, ClipboardList, Image as ImageIcon } from "lucide-react";
 import AdminStores from "./AdminStores";
 import AdminProducts from "./AdminProducts";
 import AdminCategories from "./AdminCategories";
 import AdminCoupons from "./AdminCoupons";
 import AdminCustomOrders from "./AdminCustomOrders";
+import AdminBanners from "./AdminBanners";
 
 const AdminInventory = () => {
   const [activeTab, setActiveTab] = useState("stores");
@@ -24,7 +25,7 @@ const AdminInventory = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6">
           <TabsTrigger value="stores" className="flex items-center gap-1.5">
             <Store className="h-4 w-4" /> <span className="hidden sm:inline">Stores</span>
           </TabsTrigger>
@@ -36,6 +37,9 @@ const AdminInventory = () => {
           </TabsTrigger>
           <TabsTrigger value="coupons" className="flex items-center gap-1.5">
             <Tag className="h-4 w-4" /> <span className="hidden sm:inline">Coupons</span>
+          </TabsTrigger>
+          <TabsTrigger value="banners" className="flex items-center gap-1.5">
+            <ImageIcon className="h-4 w-4" /> <span className="hidden sm:inline">Banners</span>
           </TabsTrigger>
           <TabsTrigger value="custom" className="flex items-center gap-1.5">
             <ClipboardList className="h-4 w-4" /> <span className="hidden sm:inline">Custom</span>
@@ -53,6 +57,9 @@ const AdminInventory = () => {
         </TabsContent>
         <TabsContent value="coupons" className="mt-4 border-none p-0">
           <AdminCoupons embedded={true} />
+        </TabsContent>
+        <TabsContent value="banners" className="mt-4 border-none p-0">
+          <AdminBanners embedded={true} />
         </TabsContent>
         <TabsContent value="custom" className="mt-4 border-none p-0">
           <AdminCustomOrders embedded={true} />

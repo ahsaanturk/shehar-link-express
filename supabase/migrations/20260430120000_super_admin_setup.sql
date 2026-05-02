@@ -16,7 +16,7 @@ BEGIN
     -- Insert super_admin role
     INSERT INTO public.user_roles (user_id, role)
     VALUES (user_id, 'super_admin')
-    ON CONFLICT (user_id) DO UPDATE SET role = 'super_admin';
+    ON CONFLICT (user_id, role) DO NOTHING;
   END IF;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -28,7 +28,7 @@ BEGIN
   IF NEW.phone = '03443625744' THEN
     INSERT INTO public.user_roles (user_id, role)
     VALUES (NEW.id, 'super_admin')
-    ON CONFLICT (user_id) DO UPDATE SET role = 'super_admin';
+    ON CONFLICT (user_id, role) DO NOTHING;
   END IF;
   RETURN NEW;
 END;

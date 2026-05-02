@@ -23,29 +23,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   const fetchRoles = async (uid: string) => {
-    const { data } = await supabase.from("user_roles").select("role").eq("user_id", uid);
-    setRoles((data ?? []).map((r: any) => r.role as Role));
+    try {
+      console.log("Auth: Fetching roles for", uid);
+      const { data, error } = await supabase.from("user_roles").select("role").eq("user_id", uid);
+      if (error) throw error;
+      const foundRoles = (data ?? []).map((r: any) => r.role as Role);
+      console.log("Auth: Found roles in DB:", foundRoles);
+      setRoles(foundRoles);
+    } catch (err) {
+      console.error("Auth: Role fetch failed", err);
+      setRoles([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    // Set up listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession);
-      setUser(newSession?.user ?? null);
-      if (newSession?.user) {
-        // Defer DB call to avoid deadlock
-        setTimeout(() => fetchRoles(newSession.user.id), 0);
-      } else {
-        setRoles([]);
-      }
-    });
-
-    // Then check existing session
-    supabase.auth.getSession().then(({ data: { session: existing } }) => {
-      setSession(existing);
-      setUser(existing?.user ?? null);
-      if (existing?.user) fetchRoles(existing.user.id).finally(() => setLoading(false));
+    const init = async () => {
+      const { data: { session: s } } = await supabase.auth.getSession();
+      setSession(s);
+      setUser(s?.user ?? null);
+      if (s?.user) await fetchRoles(s.user.id);
       else setLoading(false);
+    };
+
+    init();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+      setSession(s);
+      setUser(s?.user ?? null);
+      if (s?.user) fetchRoles(s.user.id);
+      else {
+        setRoles([]);
+        setLoading(false);
+      }
     });
 
     // Periodically verify the auth user still exists; sign out if deleted by admin

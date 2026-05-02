@@ -21,7 +21,16 @@ const SUPPORT_WHATSAPP = "923468776390"; // +92 346 877 6390
 
 const Profile = () => {
   const navigate = useNavigate();
-  const { user, isAdmin, isSuperAdmin, loading, signOut } = useAuth();
+  const { user, isAdmin, isSuperAdmin, loading, signOut, roles } = useAuth();
+  
+  console.log("Profile Render:", { 
+    userId: user?.id, 
+    roles, 
+    isAdmin, 
+    isSuperAdmin, 
+    loading 
+  });
+
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [whatsapp, setWhatsapp] = useState("");

@@ -1,6 +1,6 @@
 
 -- ============ ENUMS ============
-CREATE TYPE public.app_role AS ENUM ('customer', 'admin');
+CREATE TYPE public.app_role AS ENUM ('customer', 'admin', 'super_admin');
 CREATE TYPE public.store_category AS ENUM ('grocery', 'fruits_veggies', 'fast_food');
 CREATE TYPE public.order_status AS ENUM ('pending', 'preparing', 'picked_up', 'delivered', 'cancelled');
 
@@ -237,7 +237,8 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.products;
 -- ============ STORAGE BUCKETS ============
 INSERT INTO storage.buckets (id, name, public) VALUES
   ('store-images', 'store-images', true),
-  ('product-images', 'product-images', true);
+  ('product-images', 'product-images', true)
+ON CONFLICT (id) DO NOTHING;
 
 CREATE POLICY "Public reads store images" ON storage.objects
   FOR SELECT USING (bucket_id = 'store-images');

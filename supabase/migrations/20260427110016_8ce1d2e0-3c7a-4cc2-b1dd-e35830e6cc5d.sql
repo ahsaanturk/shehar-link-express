@@ -56,8 +56,17 @@ BEGIN
     COALESCE(NEW.raw_user_meta_data->>'phone', ''),
     COALESCE(NEW.raw_user_meta_data->>'whatsapp', NEW.raw_user_meta_data->>'phone', ''),
     COALESCE(NEW.raw_user_meta_data->>'address', '')
-  );
-  INSERT INTO public.user_roles (user_id, role) VALUES (NEW.id, 'customer');
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    name = EXCLUDED.name,
+    phone = EXCLUDED.phone,
+    whatsapp = EXCLUDED.whatsapp,
+    address = EXCLUDED.address;
+
+  INSERT INTO public.user_roles (user_id, role) 
+  VALUES (NEW.id, 'customer')
+  ON CONFLICT (user_id, role) DO NOTHING;
+
   RETURN NEW;
 END;
 $$;
