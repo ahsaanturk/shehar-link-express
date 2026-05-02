@@ -23,6 +23,7 @@ interface CustomOrder {
   customer_address: string;
   status: "pending" | "accepted" | "rejected" | "forwarded" | "picked_up" | "delivered";
   delivery_fee: number | null;
+  items_cost: number | null;
   admin_notes: string | null;
   rider_id: string | null;
   created_at: string;
@@ -39,6 +40,7 @@ const AdminCustomOrders = ({ embedded = false }: { embedded?: boolean }) => {
   const [filter, setFilter] = useState<StatusFilter>("pending");
   const [selected, setSelected] = useState<CustomOrder | null>(null);
   const [fee, setFee] = useState("");
+  const [itemsCost, setItemsCost] = useState("");
   const [adminNotes, setAdminNotes] = useState("");
   const [selectedRiderId, setSelectedRiderId] = useState<string>("none");
   const [updating, setUpdating] = useState(false);
@@ -86,6 +88,7 @@ const AdminCustomOrders = ({ embedded = false }: { embedded?: boolean }) => {
   const openOrder = (o: CustomOrder) => {
     setSelected(o);
     setFee(o.delivery_fee ? String(o.delivery_fee) : "");
+    setItemsCost(o.items_cost ? String(o.items_cost) : "");
     setAdminNotes(o.admin_notes ?? "");
     setSelectedRiderId(o.rider_id ?? "none");
   };
@@ -95,10 +98,15 @@ const AdminCustomOrders = ({ embedded = false }: { embedded?: boolean }) => {
     if ((status === "accepted" || status === "forwarded") && (!fee || isNaN(Number(fee)))) {
       return toast.error("Please enter a delivery fee amount");
     }
+    if (status === "delivered" && (!itemsCost || isNaN(Number(itemsCost)))) {
+      return toast.error("Please enter the total items cost / value before marking as delivered");
+    }
+
     setUpdating(true);
     const payload: any = {
       status,
       delivery_fee: (status !== "rejected") ? Number(fee) : null,
+      items_cost: (status !== "rejected") ? Number(itemsCost || 0) : null,
       admin_notes: adminNotes.trim() || null,
     };
     if (status === "forwarded") {
@@ -284,6 +292,25 @@ const AdminCustomOrders = ({ embedded = false }: { embedded?: boolean }) => {
                         ))}
                       </select>
                     </div>
+                    <div className="rounded-lg bg-muted p-2.5 text-xs">
+                      <div className="flex justify-between"><span>Delivery Fee</span><span>Rs. {fee || 0}</span></div>
+                      <div className="flex justify-between"><span>Items Cost</span><span>Rs. {itemsCost || 0}</span></div>
+                      <div className="flex justify-between border-t border-border mt-1 pt-1 font-bold text-sm">
+                        <span>Grand Total</span><span>Rs. {Number(fee || 0) + Number(itemsCost || 0)}</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label>Items Cost / Value (Rs.)</Label>
+                      <Input 
+                        type="number" 
+                        value={itemsCost} 
+                        onChange={e => setItemsCost(e.target.value)} 
+                        placeholder="Price paid for items..."
+                        className="h-8"
+                      />
+                    </div>
+
                     <Button 
                       className="w-full bg-purple-600 hover:bg-purple-700 text-white" 
                       disabled={updating || selectedRiderId === "none"} 
@@ -296,7 +323,15 @@ const AdminCustomOrders = ({ embedded = false }: { embedded?: boolean }) => {
                         <Button variant="outline" size="sm" onClick={() => updateOrder("picked_up")} disabled={updating || selected.status === "picked_up"}>
                           {selected.status === "picked_up" ? "Picked Up ✓" : "Mark Picked Up"}
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => updateOrder("delivered")} disabled={updating}>Mark Delivered</Button>
+                        <Button 
+                          variant="default" 
+                          size="sm" 
+                          className="bg-green-600 hover:bg-green-700" 
+                          onClick={() => updateOrder("delivered")} 
+                          disabled={updating}
+                        >
+                          Mark Delivered
+                        </Button>
                       </div>
                     )}
                   </div>

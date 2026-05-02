@@ -1,0 +1,1 @@
+﻿ALTER TABLE public.custom_orders ADD COLUMN IF NOT EXISTS items_cost NUMERIC DEFAULT 0;

@@ -26,12 +26,16 @@ const Orders = () => {
     if (!user) return;
     const [{ data: std }, { data: cust }] = await Promise.all([
       supabase.from("orders").select("id,short_id,status,total_amount,created_at,items").eq("customer_id", user.id),
-      supabase.from("custom_orders").select("id,short_id,status,delivery_fee,created_at").eq("customer_id", user.id),
+      supabase.from("custom_orders").select("id,short_id,status,delivery_fee,items_cost,created_at").eq("customer_id", user.id),
     ]);
 
     const combined: OrderRow[] = [
       ...(std ?? []).map(o => ({ ...o, type: "standard" as const })),
-      ...(cust ?? []).map(o => ({ ...o, type: "custom" as const, total_amount: o.delivery_fee ?? 0 })),
+      ...(cust ?? []).map(o => ({ 
+        ...o, 
+        type: "custom" as const, 
+        total_amount: (o.items_cost ?? 0) + (o.delivery_fee ?? 0) 
+      })),
     ];
 
     combined.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
