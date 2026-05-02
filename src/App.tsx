@@ -37,6 +37,7 @@ import NotFound from "./pages/NotFound.tsx";
 import CustomOrder from "./pages/CustomOrder.tsx";
 import AdminCoupons from "./pages/admin/AdminCoupons.tsx";
 import AdminCustomOrders from "./pages/admin/AdminCustomOrders.tsx";
+import AdminBanners from "./pages/admin/AdminBanners.tsx";
 
 const queryClient = new QueryClient();
 
@@ -78,6 +79,7 @@ const App = () => (
                 <Route path="/admin/reviews" element={<ProtectedRoute requireAdmin><AdminReviews /></ProtectedRoute>} />
                 <Route path="/admin/roles" element={<ProtectedRoute requireAdmin><AdminRoles /></ProtectedRoute>} />
                 <Route path="/admin/coupons" element={<ProtectedRoute requireAdmin><AdminCoupons /></ProtectedRoute>} />
+                <Route path="/admin/banners" element={<ProtectedRoute requireAdmin><AdminBanners /></ProtectedRoute>} />
                 <Route path="/admin/custom-orders" element={<ProtectedRoute requireAdmin><AdminCustomOrders /></ProtectedRoute>} />
 
                 {/* Legacy Admin Redirects */}

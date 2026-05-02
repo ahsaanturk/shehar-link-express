@@ -31,6 +31,10 @@ interface Product {
 interface Category {
   id: string; name: string; slug: string; icon: string | null; show_on_home: boolean;
 }
+interface Banner {
+  id: string; title: string; subtitle: string | null; promo_code: string | null;
+  bg_gradient: string; image_url: string | null;
+}
 
 const PAGE = 10;
 const STORE_SELECT = "id,slug,name,image_url,description,category_id,is_popular,is_visible";
@@ -45,6 +49,7 @@ const Home = () => {
   const [nearStores, setNearStores] = useState<Store[]>([]);
   const [popularProducts, setPopularProducts] = useState<Product[]>([]);
   const [nearProducts, setNearProducts] = useState<Product[]>([]);
+  const [banners, setBanners] = useState<Banner[]>([]);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -53,9 +58,9 @@ const Home = () => {
   const itemCount = useCart((s) => s.itemCount());
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
-  const copyPromo = () => {
-    navigator.clipboard?.writeText("WELCOME20").catch(() => {});
-    toast.success("Promo code WELCOME20 copied!");
+  const copyPromo = (code: string) => {
+    navigator.clipboard?.writeText(code).catch(() => {});
+    toast.success(`Promo code ${code} copied!`);
   };
 
   const addToCart = (p: Product) => {
@@ -79,17 +84,19 @@ const Home = () => {
     setNearProducts([]); setPage(0); setHasMore(true);
 
     const load = async () => {
-      const [catsRes, popStoresRes, popProdRes] = await Promise.all([
+      const [catsRes, popStoresRes, popProdRes, bannersRes] = await Promise.all([
         supabase.from("categories").select("id,name,slug,icon,show_on_home")
           .eq("is_visible", true).eq("show_on_home", true).order("sort_order"),
         supabase.from("stores").select(STORE_SELECT)
           .eq("is_active", true).eq("is_visible", true).eq("is_popular", true).order("sort_order").limit(10),
         supabase.from("products").select(PRODUCT_SELECT)
           .eq("is_available", true).eq("is_visible", true).eq("is_popular", true).order("sort_order").limit(12),
+        supabase.from("homepage_banners").select("*").eq("is_active", true).order("sort_order"),
       ]);
       setCategories((catsRes.data ?? []) as Category[]);
       setPopularStores((popStoresRes.data ?? []) as Store[]);
       setPopularProducts((popProdRes.data ?? []) as Product[]);
+      setBanners((bannersRes.data ?? []) as Banner[]);
 
       if (areaStoreIds && areaStoreIds.length > 0) {
         const { data: ns } = await supabase.from("stores")
@@ -225,23 +232,6 @@ const Home = () => {
         </div>
       )}
 
-      {/* Promo */}
-      <section className="px-4 pt-6">
-        <button type="button" onClick={copyPromo}
-          className="relative flex w-full items-center overflow-hidden rounded-2xl p-4 text-left transition active:scale-[0.99]"
-          style={{ background: "linear-gradient(135deg, hsl(271 81% 56%), hsl(280 70% 65%))" }}>
-          <div className="relative z-10 text-primary-foreground">
-            <p className="text-xl font-extrabold leading-none">Flat 20% OFF</p>
-            <p className="mt-1 text-xs font-medium opacity-95">On your first order</p>
-            <span className="mt-2 inline-block rounded-full bg-white/25 px-2.5 py-1 text-[10px] font-bold backdrop-blur">
-              Tap to copy: WELCOME20
-            </span>
-          </div>
-          <img src={promoBasket} alt="" width={768} height={512} loading="lazy"
-            className="absolute -right-4 top-1/2 h-32 w-auto -translate-y-1/2 object-contain" />
-        </button>
-      </section>
-
       {/* Near You Stores */}
       <SectionHeader title="Stores Near You" to="/categories?tab=stores&filter=near" />
       {loading ? <SkeletonRow /> : nearStores.length === 0 ? (
@@ -250,6 +240,31 @@ const Home = () => {
         <div className="no-scrollbar flex gap-3 overflow-x-auto px-4 pb-1">
           {nearStores.slice(0, 10).map((s) => <StoreCard key={s.id} store={s} />)}
         </div>
+      )}
+
+      {/* Dynamic Banners */}
+      {banners.length > 0 && (
+        <section className="no-scrollbar flex gap-4 overflow-x-auto px-4 pt-6">
+          {banners.map((b) => (
+            <button key={b.id} type="button" onClick={() => b.promo_code && copyPromo(b.promo_code)}
+              className="relative flex min-w-[85%] shrink-0 items-center overflow-hidden rounded-2xl p-4 text-left transition active:scale-[0.99] sm:min-w-[400px]"
+              style={{ background: b.bg_gradient }}>
+              <div className="relative z-10 text-primary-foreground">
+                <p className="text-xl font-extrabold leading-none">{b.title}</p>
+                {b.subtitle && <p className="mt-1 text-xs font-medium opacity-95">{b.subtitle}</p>}
+                {b.promo_code && (
+                  <span className="mt-2 inline-block rounded-full bg-white/25 px-2.5 py-1 text-[10px] font-bold backdrop-blur">
+                    Tap to copy: {b.promo_code}
+                  </span>
+                )}
+              </div>
+              {b.image_url && (
+                <img src={b.image_url} alt="" width={300} height={200} loading="lazy"
+                  className="absolute -right-4 top-1/2 h-32 w-auto -translate-y-1/2 object-contain" />
+              )}
+            </button>
+          ))}
+        </section>
       )}
 
       {/* Popular Products */}
