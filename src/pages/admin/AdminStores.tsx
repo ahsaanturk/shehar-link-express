@@ -27,6 +27,9 @@ interface Store {
   is_active: boolean;
   is_popular: boolean;
   sort_order: number;
+  theme_color: string | null;
+  seo_title: string | null;
+  seo_description: string | null;
 }
 interface Category { id: string; name: string; }
 interface Area { id: string; name: string; }
@@ -45,12 +48,25 @@ interface FormState {
   opening_time: string;
   closing_time: string;
   is_always_open: boolean;
+  theme_color: string;
+  seo_title: string;
+  seo_description: string;
 }
+
+const THEME_COLORS = [
+  { name: "Purple", value: "#7c3aed" },
+  { name: "Emerald", value: "#059669" },
+  { name: "Blue", value: "#2563eb" },
+  { name: "Rose", value: "#e11d48" },
+  { name: "Amber", value: "#d97706" },
+  { name: "Slate", value: "#475569" },
+];
 
 const blank: FormState = {
   name: "", description: "", category_id: "", image_url: null,
   is_active: true, is_popular: false, sort_order: 0, area_ids: [], category_ids: [],
   opening_time: "09:00", closing_time: "22:00", is_always_open: false,
+  theme_color: "#7c3aed", seo_title: "", seo_description: "",
 };
 
 const AdminStores = ({ embedded = false }: { embedded?: boolean }) => {
@@ -111,6 +127,9 @@ const AdminStores = ({ embedded = false }: { embedded?: boolean }) => {
       opening_time: s.opening_time ? s.opening_time.slice(0,5) : "09:00",
       closing_time: s.closing_time ? s.closing_time.slice(0,5) : "22:00",
       is_always_open: s.is_always_open ?? false,
+      theme_color: s.theme_color ?? "#7c3aed",
+      seo_title: s.seo_title ?? "",
+      seo_description: s.seo_description ?? "",
     });
     setOpen(true);
   };
@@ -153,6 +172,9 @@ const AdminStores = ({ embedded = false }: { embedded?: boolean }) => {
       opening_time: form.is_always_open ? null : (form.opening_time || null),
       closing_time: form.is_always_open ? null : (form.closing_time || null),
       is_always_open: form.is_always_open,
+      theme_color: form.theme_color,
+      seo_title: form.seo_title.trim() || null,
+      seo_description: form.seo_description.trim() || null,
     };
 
     let storeId = form.id;
@@ -338,6 +360,56 @@ const AdminStores = ({ embedded = false }: { embedded?: boolean }) => {
             <div className="flex items-center justify-between">
               <Label>Active</Label>
               <Switch checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: v })} />
+            </div>
+
+            <div className="rounded-xl border border-border p-3 space-y-4">
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Visuals & SEO</p>
+              
+              <div>
+                <Label className="text-[10px]">Theme Color</Label>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {THEME_COLORS.map(c => (
+                    <button
+                      key={c.value}
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, theme_color: c.value }))}
+                      className={`h-8 w-8 rounded-full border-2 transition ${form.theme_color === c.value ? "border-primary scale-110" : "border-transparent"}`}
+                      style={{ backgroundColor: c.value }}
+                      title={c.name}
+                    />
+                  ))}
+                  <div className="flex items-center gap-2 ml-auto">
+                    <span className="text-[10px] text-muted-foreground">Custom:</span>
+                    <Input 
+                      type="color" 
+                      value={form.theme_color} 
+                      onChange={e => setForm(f => ({ ...f, theme_color: e.target.value }))}
+                      className="h-8 w-12 p-0.5"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div>
+                  <Label className="text-[10px]">SEO Title Tag (optional)</Label>
+                  <Input 
+                    value={form.seo_title} 
+                    onChange={e => setForm(f => ({ ...f, seo_title: e.target.value }))} 
+                    placeholder="e.g. Best Pizza in Muzaffarabad | Store Name"
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <div>
+                  <Label className="text-[10px]">SEO Description (optional)</Label>
+                  <Textarea 
+                    value={form.seo_description} 
+                    onChange={e => setForm(f => ({ ...f, seo_description: e.target.value }))} 
+                    placeholder="Describe your store for Google results..."
+                    className="text-xs min-h-[60px]"
+                  />
+                </div>
+              </div>
             </div>
           </div>
           <DialogFooter>

@@ -8,8 +8,10 @@ import { useStoreRating } from "@/hooks/useReviews";
 import { ReviewSection } from "@/components/ReviewSection";
 import { ReviewStars } from "@/components/ReviewStars";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, Heart, LayoutGrid, List, Plus, ShoppingCart, Search, Clock, ClipboardList } from "lucide-react";
+import { toast } from "sonner";
 
 interface Store {
   id: string;
@@ -24,6 +26,7 @@ interface Store {
   opening_time: string | null;
   closing_time: string | null;
   is_always_open: boolean;
+  theme_color: string | null;
 }
 
 interface Product {
@@ -37,7 +40,6 @@ interface Product {
   is_visible: boolean;
 }
 
-/** Returns Open/Closed info based on store timing */
 function getStoreTimingInfo(store: Store): { isOpen: boolean; label: string } {
   if (store.is_always_open) return { isOpen: true, label: "Open 24/7" };
   if (!store.opening_time || !store.closing_time) return { isOpen: true, label: "" };
@@ -79,7 +81,7 @@ const StorePage = () => {
     if (!lookup) return;
     setLoading(true);
     const q = supabase.from("stores")
-      .select("id,slug,name,image_url,description,seo_title,seo_description,is_visible,is_active,opening_time,closing_time,is_always_open");
+      .select("id,slug,name,image_url,description,seo_title,seo_description,is_visible,is_active,opening_time,closing_time,is_always_open,theme_color");
     const finder = isSlug ? q.eq("slug", lookup) : q.eq("id", lookup);
     finder.maybeSingle().then(async ({ data }) => {
       if (!data || !data.is_active || !data.is_visible) {
@@ -119,8 +121,8 @@ const StorePage = () => {
   const storeSubtotal = cartItemsThisStore.reduce((s, i) => s + i.price * i.qty, 0);
   const storeRating = useStoreRating(store?.id ?? null);
   const timing = store ? getStoreTimingInfo(store) : null;
+  const themeColor = store?.theme_color || "#7c3aed";
 
-  // Client-side product search
   const filteredProducts = useMemo(() => {
     if (!searchQ.trim()) return products;
     const q = searchQ.toLowerCase();
@@ -140,164 +142,187 @@ const StorePage = () => {
   };
 
   return (
-    <div className="pb-32">
-      {/* Hero */}
-      <div className="relative h-48 w-full bg-muted">
-        {store.image_url && <img src={store.image_url} alt={store.name} className="h-full w-full object-cover" />}
-        <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
-        <Link to="/" aria-label="Back" className="absolute left-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-background/90 backdrop-blur">
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
-        <button
-          onClick={() => toggleStore(store.id)}
-          aria-label={isStoreFav(store.id) ? "Remove favorite" : "Add favorite"}
-          className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-background/90 backdrop-blur"
-        >
-          <Heart className={`h-5 w-5 ${isStoreFav(store.id) ? "fill-primary text-primary" : ""}`} />
-        </button>
+    <div className="pb-32 bg-secondary/5 min-h-screen">
+      {/* Hero with dynamic background */}
+      <div className="relative h-56 w-full overflow-hidden">
+        {store.image_url ? (
+          <img src={store.image_url} alt={store.name} className="h-full w-full object-cover" />
+        ) : (
+          <div className="h-full w-full opacity-20" style={{ background: themeColor }} />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
+        
+        <div className="absolute inset-x-0 top-0 flex items-center justify-between p-4">
+          <Link to="/" aria-label="Back" className="flex h-9 w-9 items-center justify-center rounded-full bg-background/80 backdrop-blur-md shadow-sm">
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
+          <button
+            onClick={() => toggleStore(store.id)}
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-background/80 backdrop-blur-md shadow-sm"
+          >
+            <Heart className={`h-5 w-5 ${isStoreFav(store.id) ? "fill-red-500 text-red-500" : ""}`} />
+          </button>
+        </div>
+
+        {/* Floating Store Header */}
+        <div className="absolute inset-x-4 bottom-0 translate-y-1/2">
+          <Card className="border-none shadow-xl backdrop-blur-lg bg-card/90 p-5 rounded-2xl overflow-hidden relative">
+            {/* Design accent */}
+            <div className="absolute top-0 right-0 w-32 h-32 -mr-16 -mt-16 rounded-full opacity-10 blur-2xl" style={{ backgroundColor: themeColor }} />
+            
+            <div className="relative z-10">
+              <div className="flex items-start justify-between">
+                <h1 className="text-2xl font-black tracking-tight">{store.name}</h1>
+                <ReviewStars rating={storeRating.avg} size="sm" showValue count={storeRating.count} />
+              </div>
+              {store.description && <p className="mt-1 text-[11px] text-muted-foreground font-medium leading-relaxed max-w-[90%]">{store.description}</p>}
+              <div className="mt-3 flex items-center gap-3">
+                {timing && (
+                  <span className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-wider ${
+                    timing.isOpen ? "bg-emerald-500/10 text-emerald-600" : "bg-red-500/10 text-red-600"
+                  }`}>
+                    <Clock className="h-3 w-3" />
+                    {timing.isOpen ? "Open Now" : "Closed Now"}
+                  </span>
+                )}
+                {timing?.label && <span className="text-[10px] font-medium text-muted-foreground">{timing.label}</span>}
+              </div>
+            </div>
+          </Card>
+        </div>
       </div>
 
-      <div className="-mt-6 px-4">
-        <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-          <h1 className="text-xl font-extrabold">{store.name}</h1>
-          {store.description && <p className="mt-1 text-xs text-muted-foreground">{store.description}</p>}
-          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
-            <ReviewStars rating={storeRating.avg} size="sm" showValue count={storeRating.count} />
-            {timing && timing.label && (
-              <span className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                timing.isOpen ? "bg-green-500/10 text-green-700" : "bg-red-500/10 text-red-700"
-              }`}>
-                <Clock className="h-3 w-3" />
-                {timing.label}
-              </span>
+      <div className="pt-20 px-4 space-y-4">
+        {/* Custom Order Action */}
+        <Link to={`/custom-order?store=${store.slug}`}>
+          <div className="group flex items-center gap-4 rounded-2xl border border-dashed p-4 transition active:scale-[0.98]" style={{ borderColor: `${themeColor}40`, backgroundColor: `${themeColor}08` }}>
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl shadow-inner transition group-hover:scale-110" style={{ backgroundColor: `${themeColor}20` }}>
+              <ClipboardList className="h-6 w-6" style={{ color: themeColor }} />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-black" style={{ color: themeColor }}>Special Request / Custom Order</p>
+              <p className="text-[10px] text-muted-foreground font-semibold">Order anything from this store even if not listed</p>
+            </div>
+          </div>
+        </Link>
+
+        {/* Menu Section */}
+        <div className="pt-2">
+          <div className="flex items-center justify-between sticky top-0 z-20 py-3 bg-secondary/5 backdrop-blur-sm -mx-4 px-4">
+            <div className="relative flex-1 max-w-[70%]">
+              <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Find in menu..."
+                value={searchQ}
+                onChange={e => setSearchQ(e.target.value)}
+                className="h-9 rounded-full pl-8 text-xs border-none shadow-sm bg-card"
+              />
+            </div>
+            <div className="flex items-center gap-1 rounded-full bg-card p-1 shadow-sm">
+              <button onClick={() => setView("grid")} className={`p-1.5 rounded-full transition ${view === "grid" ? "bg-secondary text-primary" : "text-muted-foreground"}`} style={{ color: view === "grid" ? themeColor : undefined }}><LayoutGrid className="h-4 w-4" /></button>
+              <button onClick={() => setView("list")} className={`p-1.5 rounded-full transition ${view === "list" ? "bg-secondary text-primary" : "text-muted-foreground"}`} style={{ color: view === "list" ? themeColor : undefined }}><List className="h-4 w-4" /></button>
+            </div>
+          </div>
+
+          <div className="mt-2">
+            {filteredProducts.length === 0 ? (
+              <div className="py-20 text-center space-y-2">
+                <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center"><Search className="h-6 w-6 text-muted-foreground" /></div>
+                <p className="text-xs font-bold text-muted-foreground">{searchQ ? `No results for "${searchQ}"` : "This store has no items listed yet."}</p>
+              </div>
+            ) : view === "grid" ? (
+              <div className="grid grid-cols-2 gap-4">
+                {filteredProducts.map((p) => {
+                  const q = qtyInCart(p.id);
+                  return (
+                    <Card key={p.id} className="overflow-hidden border-none shadow-sm group">
+                      <Link to={`/${store.slug}/${p.slug}`} className="block relative aspect-square bg-muted">
+                        {p.image_url && <img src={p.image_url} alt={p.name} className="h-full w-full object-cover transition group-hover:scale-105" loading="lazy" />}
+                        {!p.is_available && <div className="absolute inset-0 bg-background/60 backdrop-blur-[2px] flex items-center justify-center font-black text-[10px] uppercase text-muted-foreground">Unavailable</div>}
+                      </Link>
+                      <div className="p-3">
+                        <Link to={`/${store.slug}/${p.slug}`}>
+                          <p className="truncate text-xs font-black">{p.name}</p>
+                          <p className="mt-0.5 truncate text-[9px] text-muted-foreground font-medium">{p.description || " "}</p>
+                        </Link>
+                        <div className="mt-2 flex items-center justify-between">
+                          <p className="text-sm font-black" style={{ color: themeColor }}>Rs. {Math.round(p.price)}</p>
+                          {p.is_available && (
+                            q === 0 ? (
+                              <button onClick={() => addToCart(p)} className="flex h-7 w-7 items-center justify-center rounded-full text-white shadow-md transition active:scale-90" style={{ backgroundColor: themeColor }}>
+                                <Plus className="h-4 w-4" />
+                              </button>
+                            ) : (
+                              <Link to="/cart" className="flex h-7 items-center gap-1 rounded-full px-2.5 text-[9px] font-black text-white shadow-md animate-in zoom-in-75" style={{ backgroundColor: themeColor }}>
+                                <ShoppingCart className="h-3 w-3" /> ({q})
+                              </Link>
+                            )
+                          )}
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {filteredProducts.map((p) => {
+                  const q = qtyInCart(p.id);
+                  return (
+                    <Card key={p.id} className="flex items-center gap-4 p-3 border-none shadow-sm">
+                      <Link to={`/${store.slug}/${p.slug}`} className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-muted">
+                        {p.image_url && <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" loading="lazy" />}
+                        {!p.is_available && <div className="absolute inset-0 bg-background/60 backdrop-blur-[2px]" />}
+                      </Link>
+                      <div className="min-w-0 flex-1">
+                        <Link to={`/${store.slug}/${p.slug}`}>
+                          <p className="truncate text-sm font-black">{p.name}</p>
+                          {p.description && <p className="line-clamp-1 text-[10px] text-muted-foreground font-medium">{p.description}</p>}
+                          <p className="mt-1 text-sm font-black" style={{ color: themeColor }}>Rs. {Math.round(p.price)}</p>
+                        </Link>
+                      </div>
+                      <div className="shrink-0">
+                        {!p.is_available ? (
+                          <span className="text-[10px] font-bold text-muted-foreground uppercase">N/A</span>
+                        ) : q === 0 ? (
+                          <Button size="sm" className="h-8 rounded-full font-black text-[10px] uppercase tracking-wider shadow-sm text-white" style={{ backgroundColor: themeColor }} onClick={() => addToCart(p)}>Add</Button>
+                        ) : (
+                          <Link to="/cart"><Button size="sm" variant="secondary" className="h-8 rounded-full font-black text-[10px] uppercase tracking-wider border shadow-sm" style={{ color: themeColor, borderColor: themeColor }}><ShoppingCart className="mr-1 h-3.5 w-3.5" />{q}</Button></Link>
+                        )}
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
             )}
           </div>
         </div>
-      </div>
 
-      {/* Custom Order button */}
-      <div className="px-4 pt-3">
-        <Link to={`/custom-order?store=${store.slug}`}>
-          <div className="flex items-center gap-3 rounded-2xl border border-dashed border-primary/40 bg-primary/5 p-3 transition active:scale-[0.99]">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/15">
-              <ClipboardList className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-sm font-bold text-primary">Custom Order from this store</p>
-              <p className="text-[10px] text-muted-foreground">Order anything not listed · کوئی بھی چیز منگوائیں</p>
-            </div>
-          </div>
-        </Link>
-      </div>
-
-      {/* Products header + search */}
-      <div className="flex items-center justify-between px-4 pt-5">
-        <h2 className="text-sm font-bold">Menu ({filteredProducts.length})</h2>
-        <div className="flex items-center gap-1 rounded-full border border-border bg-card p-1">
-          <button aria-label="Grid view" onClick={() => setView("grid")}
-            className={`flex h-7 w-7 items-center justify-center rounded-full ${view === "grid" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>
-            <LayoutGrid className="h-3.5 w-3.5" />
-          </button>
-          <button aria-label="List view" onClick={() => setView("list")}
-            className={`flex h-7 w-7 items-center justify-center rounded-full ${view === "list" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>
-            <List className="h-3.5 w-3.5" />
-          </button>
+        <div className="pt-6">
+          <ReviewSection storeId={store.id} avgRating={storeRating.avg} reviewCount={storeRating.count} />
         </div>
       </div>
 
-      {/* In-store search */}
-      <div className="relative mt-2 px-4">
-        <Search className="absolute left-7 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder={`Search in ${store.name}…`}
-          value={searchQ}
-          onChange={e => setSearchQ(e.target.value)}
-          className="rounded-full pl-9"
-        />
-      </div>
-
-      <div className="px-4 pt-3">
-        {filteredProducts.length === 0 ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">
-            {searchQ ? `No products matching "${searchQ}".` : "No products yet."}
-          </p>
-        ) : view === "grid" ? (
-          <div className="grid grid-cols-2 gap-3">
-            {filteredProducts.map((p) => {
-              const q = qtyInCart(p.id);
-              return (
-                <div key={p.id} className="overflow-hidden rounded-2xl border border-border bg-card">
-                  <Link to={`/${store.slug}/${p.slug}`} className="block">
-                    <div className="aspect-square w-full bg-muted">
-                      {p.image_url && <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" loading="lazy" />}
-                    </div>
-                  </Link>
-                  <div className="p-2.5">
-                    <Link to={`/${store.slug}/${p.slug}`}>
-                      <p className="line-clamp-1 text-sm font-bold">{p.name}</p>
-                      <p className="line-clamp-1 text-[10px] text-muted-foreground">{p.description ?? " "}</p>
-                    </Link>
-                    <div className="mt-1 flex items-center justify-between">
-                      <p className="text-sm font-extrabold text-primary">Rs. {Math.round(p.price)}</p>
-                      {!p.is_available ? (
-                        <span className="text-[10px] text-muted-foreground">N/A</span>
-                      ) : q === 0 ? (
-                        <button onClick={() => addToCart(p)} aria-label={`Add ${p.name}`}
-                          className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground transition active:scale-95">
-                          <Plus className="h-4 w-4" />
-                        </button>
-                      ) : (
-                        <Link to="/cart" className="flex h-7 items-center gap-1 rounded-full bg-secondary px-2 text-[10px] font-bold text-primary">
-                          <ShoppingCart className="h-3 w-3" /> View ({q})
-                        </Link>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <ul className="divide-y divide-border">
-            {filteredProducts.map((p) => {
-              const q = qtyInCart(p.id);
-              return (
-                <li key={p.id} className="flex items-center gap-3 py-3">
-                  <Link to={`/${store.slug}/${p.slug}`} className="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-muted">
-                    {p.image_url && <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" loading="lazy" />}
-                  </Link>
-                  <Link to={`/${store.slug}/${p.slug}`} className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">{p.name}</p>
-                    {p.description && <p className="line-clamp-1 text-xs text-muted-foreground">{p.description}</p>}
-                    <p className="mt-1 text-sm font-bold text-primary">Rs. {Math.round(p.price)}</p>
-                  </Link>
-                  {!p.is_available ? (
-                    <span className="text-xs text-muted-foreground">Unavailable</span>
-                  ) : q === 0 ? (
-                    <Button size="sm" onClick={() => addToCart(p)}><Plus className="h-4 w-4" /> Add</Button>
-                  ) : (
-                    <Link to="/cart"><Button size="sm" variant="secondary"><ShoppingCart className="mr-1 h-4 w-4" />View ({q})</Button></Link>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
-
-      {/* Reviews */}
-      <div className="px-4 pt-6">
-        <ReviewSection storeId={store.id} avgRating={storeRating.avg} reviewCount={storeRating.count} />
-      </div>
-
       {cartItemsThisStore.length > 0 && (
-        <div className="fixed inset-x-0 bottom-20 z-30 mx-auto max-w-md px-4">
-          <Button onClick={() => navigate("/cart")} className="flex h-14 w-full items-center justify-between rounded-full px-5 shadow-lg">
-            <span className="flex items-center gap-2">
-              <ShoppingCart className="h-5 w-5" />
-              {cartItemsThisStore.reduce((s, i) => s + i.qty, 0)} from this store
-            </span>
-            <span>View Cart · Rs. {storeSubtotal}</span>
+        <div className="fixed inset-x-0 bottom-24 z-40 mx-auto max-w-sm px-4">
+          <Button 
+            onClick={() => navigate("/cart")} 
+            className="flex h-14 w-full items-center justify-between rounded-2xl px-6 shadow-2xl transition active:scale-95 text-white"
+            style={{ backgroundColor: themeColor }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="bg-white/20 p-2 rounded-lg">
+                <ShoppingCart className="h-5 w-5 text-white" />
+              </div>
+              <div className="text-left">
+                <p className="text-[10px] font-bold text-white/80 uppercase tracking-widest leading-none mb-1">In your cart</p>
+                <p className="text-sm font-black text-white">{cartItemsThisStore.reduce((s, i) => s + i.qty, 0)} Items</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] font-bold text-white/80 uppercase tracking-widest leading-none mb-1">Subtotal</p>
+              <p className="text-sm font-black text-white">Rs. {storeSubtotal}</p>
+            </div>
           </Button>
         </div>
       )}

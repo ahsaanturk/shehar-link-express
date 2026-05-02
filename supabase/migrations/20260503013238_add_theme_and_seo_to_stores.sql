@@ -1,0 +1,1 @@
+﻿ALTER TABLE public.stores ADD COLUMN IF NOT EXISTS theme_color TEXT DEFAULT '#7c3aed'; ALTER TABLE public.stores ADD COLUMN IF NOT EXISTS seo_title TEXT; ALTER TABLE public.stores ADD COLUMN IF NOT EXISTS seo_description TEXT;
